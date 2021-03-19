@@ -30,6 +30,10 @@ end
 Data = Data(CHs,:); % Order data by channel depth
 Data = Data(~BadCh(CHs),:); % Only include data from good channels
 Data=double(Data); % Convert data from int16 to double
+
+Th=Th(CHs,:);
+Th=Th(~BadCh(CHs));
+
 numChs = sum(~BadCh); % Number of good channels
 
 for i = 1:numChs
