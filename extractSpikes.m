@@ -20,6 +20,7 @@ function extractSpikes(animalID,unitID,expID,settings,parts,JobID)
 %    start of each waveform
 
 % requires SpikeFiles directory to be present in the experiment folder
+% also updates the id file
 %% generate basic info
 %load threshold and id data
 expname=[animalID '_u' unitID '_' expID];
@@ -135,7 +136,7 @@ nCross=floor(settings.refrCross/1000*id.sampleFreq);
 CrossTh = movmax(CrossTh,[nCross 0],1);
 
 
-%% Make sure there is no repeted value of max during artificial refractory period (necessary for raw data with low bit depth)
+%% Make sure there is no repeated value of max during artificial refractory period (necessary for raw data with low bit depth)
 %double - unlikely this will actually ever occur, so removed for now
 % RepeatedMax = zeros(size(Data));
 % % Is the first max in 15 samples across neighbor channels
@@ -149,7 +150,7 @@ CrossTh = movmax(CrossTh,[nCross 0],1);
 
 %% Final spikes detection
 
-%find spikes: Minimum across refrTime ad refrSpace within refrCross after
+%find spikes: Minimum across refrTime and refrSpace within refrCross after
 %threshold crossing
 %this sets the occurence of the minimum of a waveform to 1
 Spikes = CrossTh & minData==Data; 
@@ -169,7 +170,6 @@ matOut=matfile(outname,'Writable',true);
 %add settings and original file name for record keeping
 matOut.settings=settings;
 matOut.expname=expname;
-matOut.dateThreshold=date;
 
 for p=1:length(id.probes)
     for i=1:id.probes(p).nChannels
@@ -201,7 +201,7 @@ for p=1:length(id.probes)
                 %the first entry in the waveform matrices
                 distCh=sqrt((id.probes(p).x-id.probes(p).x(i)).^2+(id.probes(p).z-id.probes(p).z(i)).^2);
                 [distOrg,distIdx]=sort(distCh);                
-                spikeData.channelIds=distIdx(distOrg<=settings.spikeRadius)+offsetCh;
+                spikeData.channelIds=distIdx(distOrg<=settings.spikeRadius)+offsetCh; %add offset back to get to correct channels
                 Nch=length(spikeData.channelIds);
                          
                 wv=Data([-settings.spikeSamples:settings.spikeSamples]+Times,spikeData.channelIds);
@@ -226,6 +226,27 @@ for p=1:length(id.probes)
         end
     end
 end
+
+%for job 0, add info to id file for bookkeeping
+if JobID==0
+    id.extractSpikes.date=date;
+    id.extractSpikes.name=settings.name;
+   
+    jobVec=[0:parts-1];
+    startSample = samplesPerJob*jobVec - partsOverlapSamples; 
+    startSample(startSample<0)=0;
+    stopSample=startSample+samplesPerJob;
+    stopSample(end)=samples;
+    edgeSample=startSample+partsOverlapSamples/2; %boundaries between samples
+    edgeSample(end+1)=samples; %to finish the last bin
+    
+    id.extractSpikes.jobStart=startSample;
+    id.extractSpikes.jobStop=stopSample;
+    id.extractSpikes.jobEdges=edgeSample;
+    
+    save(fullfile(settings.expFolder,animalID,expname,[expname settings.extId]),'id'); 
+end
+
 disp(['extractSpikes job ID ' num2str(JobID) ' done.'])
 
         

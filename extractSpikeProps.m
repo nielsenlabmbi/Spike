@@ -1,10 +1,38 @@
-function extractSpikeProps(expFolder,animalID,unitID,expID,jobID)
-
+function extractSpikeProps(expFolder,animalID,unitID,expID,jobID,name)
+% extract properties for spikes (one job file at a time)
+% input parameters:
 % animalID - animal ID (string)
 % unitID - unit ID (string)
 % expID - experiment ID (string)
 % expFolder - base folder for experiments (string)
 % jobID - job ID of raw spike file to process (number)
+% name - name or initials of person running the script (for bookkeeping)
+%
+% output parameters:
+% structure spk with fields (each is a vector/matrix with entries for each
+% spike)
+% - EnAll: Energy for detection plus surrounding channels
+% - EnDet: Energy for detection channel only (also contained in EnAll, this
+% is to speed up later computations that only need the detection channel)
+% - AmpMinAll, AmpMinDet: Minimum amplitude 
+% - AmxMaxAll, AmpMaxDet: Maximum amplitude
+% - PksAll, PksDet: Max-Min
+% - WidthAll, WidthDet: Time of max - time of min
+% - chListAll: List of channels included
+% - comXMinDet, comZMinDet: center of mass for x and z, based on minimum
+% - comXEnDet,comZEnDet: center of mass for x and z, based on energy
+% - comZMinDetShaft, comZEnDetShaft: center of mass for z, organized to
+% split shafts (based on detection channel)
+% - timesDet: spike times for detection channels
+% - detCh: id of detection channel
+% - detChSort: id of detection channel, sorted according to Z and shank
+% - detProbe: id of detection probe
+% - flagDuplicate: possible detection of one spike as separate events on
+% different channels
+%
+% splits data into separate files for each probe
+% also updates the id file
+
 
 %we need the id file for probe settings
 expname=[animalID '_u' unitID '_' expID];
@@ -13,23 +41,36 @@ load(fullfile(expFolder,animalID,expname,[expname '_id'])); %generates id
 %compute total channel number
 nChannels=sum([id.probes.nChannels]);
 
-%% go through spike file, compute properties for each spike, collected in arrays
+%parameter choices
+spkWindow=[-4 6]; %determines over how many datapoints we're looking for the minimum
 
-%open matfile with spike data - note if too large load 1 probe only? 1
-%channel at a time is too slow
+
+%open matfile with spike data 
 %generates spikeData and settings
 load(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(jobID) '_spike'])); 
 %samples per spike waveform
 spikeSamples=settings.spikeSamples;
 
-spkCount=1;
+%% go through spike file, compute properties for each spike, collected in arrays
+
+
 for p=1:length(id.probes)
+    spkCount=1;
+    spk=struct;
+    
+    %sort channels according to z and shank
+    probeOrg=[id.probes(p).z id.probes(p).shaft id.probes(p).channels+1];
+    probeSort=sortrows(probeOrg,[2 1]);
+    
+    %maximum z (for shaft separation)
+    maxZ=max(id.probes(p).z);
+    
     for i=1:id.probes(p).nChannels
         
         offsetCh=sum([id.probes(1:p-1).nChannels]); %0 for p=1
              
         %only go through channels that actually have spikes
-        if length(spikeData(i+offsetCh).spikeTimes)>1 || ~isnan(spikeData(i+offsetCh).spikeTimes)
+        if length(spikeData(i+offsetCh).spikeTimes)>1 | ~isnan(spikeData(i+offsetCh).spikeTimes)
             
             %base parameters
             Nspikes=length(spikeData(i+offsetCh).spikeTimes);
@@ -61,11 +102,11 @@ for p=1:length(id.probes)
             
             %minimum: maximum in 2nd derivative around the spikeSamples+1
             %using +-5 data points for now
-            [minDer,TimeMin]=max(Wv2Der(:,spikeSamples-4:spikeSamples+6,:),[],2);
+            [minDer,TimeMin]=max(Wv2Der(:,spikeSamples+spkWindow(1):spikeSamples+spkWindow(2),:),[],2);
             
             %because of how diff works, max of derivative is one ahead of true min, also
             %add time offset relative to original waveform
-            TimeMin=squeeze(TimeMin)+spikeSamples-4; %spikes x channel
+            TimeMin=squeeze(TimeMin)+spikeSamples+spkWindow(1); %spikes x channel
             
             %if there is no local minimum, use the minimum of the
             %detection channel
@@ -102,11 +143,13 @@ for p=1:length(id.probes)
             %width
             Width=TimeMax-TimeMin;
             
+                       
             %compute center of mass using minimum and energy, using the coordinates of the
             %channels; we won't separate by shank here since every
             %channel has a unique position, so it's not necessary
-            xpos=id.probes(p).x(spikeData(i+offsetCh).channelIds);
-            zpos=id.probes(p).z(spikeData(i+offsetCh).channelIds);
+            chId=spikeData(i+offsetCh).channelIds-offsetCh;
+            xpos=id.probes(p).x(chId);
+            zpos=id.probes(p).z(chId);
             
             comXMin=sum(abs(AmpMin).*xpos',2)./sum(abs(AmpMin),2);
             comZMin=sum(abs(AmpMin).*zpos',2)./sum(abs(AmpMin),2);
@@ -114,6 +157,8 @@ for p=1:length(id.probes)
             comXEn=sum(En.*xpos',2)./sum(En,2);
             comZEn=sum(En.*zpos',2)./sum(En,2);
             
+            comZEnShaft=comZEn+(maxZ+100)*(id.probes(p).shaft(i)-1); %buffer of 100um between shafts
+            comZMinShaft=comZMin+(maxZ+100)*(id.probes(p).shaft(i)-1);
             
             %since we are reorganizing into a structure per spike,
             %there are a couple of things we need to copy from
@@ -121,8 +166,17 @@ for p=1:length(id.probes)
             %time stamps
             spkTimes=spikeData(i+offsetCh).spikeTimes;
             
-            %detection channel
-            detChIdx=repmat(i+offsetCh,size(spkTimes));
+            %detection channel - we need this twice (to get amplitudes
+            %in sort gui)
+            detChIdx=repmat(i,size(spkTimes));
+            detChRaw=repmat(i+offsetCh,size(spkTimes));
+            
+            %detection probe
+            %detProbeIdx=repmat(p,size(spkTimes));
+            
+            %detection channel sorted according to z
+            detChIdxSort=find(probeSort(:,3)==i);
+            detChIdxSort=repmat(detChIdxSort,size(spkTimes));
             
             %channel list
             chList=repmat(spikeData(i+offsetCh).channelIds',Nspikes,1);
@@ -150,26 +204,103 @@ for p=1:length(id.probes)
             %entries wit spikes x 1
             spk.comXMinDet(spkCount:spkCount+Nspikes-1)=comXMin;
             spk.comZMinDet(spkCount:spkCount+Nspikes-1)=comZMin;
+            spk.comZMinShaftDet(spkCount:spkCount+Nspikes-1)=comZMinShaft;
             spk.comXEnDet(spkCount:spkCount+Nspikes-1)=comXEn;
             spk.comZEnDet(spkCount:spkCount+Nspikes-1)=comZEn;
+            spk.comZEnShaftDet(spkCount:spkCount+Nspikes-1)=comZEnShaft;
             spk.spkTimesDet(spkCount:spkCount+Nspikes-1)=spkTimes;
             spk.detCh(spkCount:spkCount+Nspikes-1)=detChIdx;
-            
+            spk.detChRaw(spkCount:spkCount+Nspikes-1)=detChRaw;
+            spk.detChSort(spkCount:spkCount+Nspikes-1)=detChIdxSort;
+            %spk.detProbe(spkCount:spkCount+Nspikes-1)=detProbeIdx;
             
             spkCount=spkCount+Nspikes;
             
             
         end %if no spikes
-        
     end %for ch
+    
+    % now go through and flag potential duplicates - we do this at the spike
+    %level (only flag events that are separately detected on multiple channels;
+    %different from the amplitude extraction at neighboring channels
+    %happening above)
+    spk.flagDuplicate=zeros(size(spk.spkTimesDet));
+    timesIdx=[1:length(spk.spkTimesDet)];
+
+    for i=1:id.probes(p).nChannels
+        
+        %find spikes at detection channel, get their energy and position in
+        %spkTimes vector
+        detTimes=spk.spkTimesDet(spk.detCh==i);
+        timesIdxDet=timesIdx(spk.detCh==i);
+        enDet=spk.EnDet(spk.detCh==i);
+       
+        %spread out each event over neighboring samples (to give interval
+        %for detection)
+        detTimesConv=detTimes+[spkWindow(1):spkWindow(2)]'; 
+        detTimesConv=detTimesConv(:);
+        
+        %also need an index for grouping later
+        detIdxConv=repmat([1:length(detTimes)],spkWindow(2)-spkWindow(1)+1,1);
+        detIdxConv=detIdxConv(:);
+        
+        %get the other channels
+        chList=spikeData(i+offsetCh).channelIds-offsetCh; %since detCh is probe specific 
+        chList=chList(2:end); %need to remove center channel
+        
+        %find overlapping events 
+        tf=ismember(spk.detCh,chList) & ismember(spk.spkTimesDet,detTimesConv);
+        
+        %only continue if there actually are any
+        if sum(tf)>0
+            %get energy of overlapping events
+            enCh=spk.EnDet(tf);
+            
+            %get their index in the spkTimesDet vector
+            timesIdxCh=timesIdx(tf);
+            
+            %get index of original event to use as grouping par
+            [~,locB]=ismember(spk.spkTimesDet(tf),detTimesConv);
+            idxCh=detIdxConv(locB);
+            
+            %generate one big array for accumarray
+            enAll=[enDet(unique(idxCh)) enCh]'; %we only want the relevant original spikes
+            idxAll=[unique(idxCh);idxCh];
+            timesIdxAll=[timesIdxDet(unique(idxCh)) timesIdxCh];
+            
+            %get maximum per group
+            maxData=accumarray(idxAll,enAll,[],@max);
+            
+            %flag which of the overlapping events are not the maximum (i.e.
+            %duplicates)
+            flagD = enAll~=maxData(idxAll);
+            
+            %put back into large vector
+            idxD=timesIdxAll(flagD);
+            spk.flagDuplicate(idxD)=1; %set to zero outside loop; so events that get flagged multiple times are still ok
+        end
+    end %for ch
+    
+    %add expname just in case
+    spk.expname=expname;
+    spk.probeId=p;
+
+    outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(jobID) '_p' num2str(p) '_spkinfo']);
+    save(outname,'spk','-v7.3');
+    
 end %for probes
 
-%generate some basic info
-spk.dateProps=date;
-spk.expname=expname;
 
-outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(jobID) '_spkinfo']);
-save(outname,'spk');
+
+
+%add to id file for job 0 for bookkeeping
+if jobID==0
+    id.extractSpikeProps.name=name;
+    id.extractSpikeProps.date=date;
+    save(fullfile(expFolder,animalID,expname,[expname '_id']),'id');
+end
+
+
 disp(['extractSpikes job ID ' num2str(jobID) ' done.'])
 
 
