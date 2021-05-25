@@ -155,7 +155,9 @@ for p=1:length(id.probes)
             
             comXMin=nansum(abs(AmpMin).*xpos',2)./nansum(abs(AmpMin),2);
             comZMin=nansum(abs(AmpMin).*zpos',2)./nansum(abs(AmpMin),2);
-                      
+            
+            if ~isif
+            
             comXEn=nansum(En.*xpos',2)./nansum(En,2);
             comZEn=nansum(En.*zpos',2)./nansum(En,2);
             

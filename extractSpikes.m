@@ -63,7 +63,7 @@ Data=Data';
 Data = filter(thresholding.butter.b1, thresholding.butter.a1, Data,[],1);
 
 % set bad channels to NaN (could also remove them)
-Data(:,logical(thresholding.badChannels))=NaN;
+Data(:,logical(thresholding.badChannels))=NaN; %this propagates the choice to the output
 numChs = sum(~thresholding.badChannels); % Number of good channels
 
 
