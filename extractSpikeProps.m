@@ -29,6 +29,8 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,jobID,name)
 % - detProbe: id of detection probe
 % - flagDuplicate: possible detection of one spike as separate events on
 % different channels
+% - NDuplicate: for each spike, number of channels with a simultaneously
+% detect spike
 %
 % splits data into separate files for each probe
 % also updates the id file
