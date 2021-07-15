@@ -14,7 +14,7 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,jobID,name)
 % - EnAll: Energy for detection plus surrounding channels
 % - EnDet: Energy for detection channel only (also contained in EnAll, this
 % is to speed up later computations that only need the detection channel)
-% - AmpMinAll, AmpMinDet: Minimum amplitude 
+% - AmpMinAll, AmpMinDet: Minimum amplitude
 % - AmxMaxAll, AmpMaxDet: Maximum amplitude
 % - PksAll, PksDet: Max-Min
 % - WidthAll, WidthDet: Time of max - time of min
@@ -48,9 +48,9 @@ spkWindow=[-4 6]; %determines over how many datapoints we're looking for the min
 spkTol=5; %window over which threshold crossings are considered duplicates/artefacts
 
 
-%open matfile with spike data 
+%open matfile with spike data
 %generates spikeData and settings
-load(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(jobID) '_spike'])); 
+load(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(jobID) '_spike']));
 %samples per spike waveform
 spikeSamples=settings.spikeSamples;
 
@@ -58,6 +58,7 @@ spikeSamples=settings.spikeSamples;
 
 
 for p=1:length(id.probes)
+    
     spkCount=1;
     spk=struct;
     
@@ -71,7 +72,7 @@ for p=1:length(id.probes)
     for i=1:id.probes(p).nChannels
         
         offsetCh=sum([id.probes(1:p-1).nChannels]); %0 for p=1
-             
+        
         %only go through channels that actually have spikes
         if length(spikeData(i+offsetCh).spikeTimes)>1 | ~isnan(spikeData(i+offsetCh).spikeTimes)
             
@@ -147,7 +148,7 @@ for p=1:length(id.probes)
             %width
             Width=TimeMax-TimeMin;
             
-                       
+            
             %compute center of mass using minimum and energy, using the coordinates of the
             %channels
             %make sure to account for bad channels that are set to NaN
@@ -157,7 +158,7 @@ for p=1:length(id.probes)
             
             comXMin=nansum(abs(AmpMin).*xpos',2)./nansum(abs(AmpMin),2);
             comZMin=nansum(abs(AmpMin).*zpos',2)./nansum(abs(AmpMin),2);
-                      
+            
             comXEn=nansum(En.*xpos',2)./nansum(En,2);
             comZEn=nansum(En.*zpos',2)./nansum(En,2);
             
@@ -170,8 +171,7 @@ for p=1:length(id.probes)
             %time stamps
             spkTimes=spikeData(i+offsetCh).spikeTimes;
             
-            %detection channel - we need this twice (to get amplitudes
-            %in sort gui)
+            %detection channel - per probe and in entire file
             detChIdx=repmat(i,size(spkTimes));
             detChRaw=repmat(i+offsetCh,size(spkTimes));
             
@@ -182,8 +182,9 @@ for p=1:length(id.probes)
             detChIdxSort=find(probeSort(:,3)==i);
             detChIdxSort=repmat(detChIdxSort,size(spkTimes));
             
-            %channel list
-            chList=repmat(spikeData(i+offsetCh).channelIds',Nspikes,1);
+            %channel list - again per probe and in entire file
+            chListRaw=repmat(spikeData(i+offsetCh).channelIds',Nspikes,1);
+            chList=repmat(spikeData(i+offsetCh).channelIds'-offsetCh,Nspikes,1);
             
             %output
             %entries with spikes x channels - for all of these, we also
@@ -191,8 +192,8 @@ for p=1:length(id.probes)
             spk.EnAll(spkCount:spkCount+Nspikes-1)=num2cell(En,2); %number of channels might change
             spk.EnDet(spkCount:spkCount+Nspikes-1)=En(:,1);
             
-            spk.AmpMinAll(spkCount:spkCount+Nspikes-1)=num2cell(AmpMin,2); 
-            spk.AmpMinDet(spkCount:spkCount+Nspikes-1)=AmpMin(:,1); 
+            spk.AmpMinAll(spkCount:spkCount+Nspikes-1)=num2cell(AmpMin,2);
+            spk.AmpMinDet(spkCount:spkCount+Nspikes-1)=AmpMin(:,1);
             
             spk.AmpMaxAll(spkCount:spkCount+Nspikes-1)=num2cell(AmpMax,2);
             spk.AmpMaxDet(spkCount:spkCount+Nspikes-1)=AmpMax(:,1);
@@ -200,9 +201,10 @@ for p=1:length(id.probes)
             spk.PksAll(spkCount:spkCount+Nspikes-1)=num2cell(Pks,2);
             spk.PksDet(spkCount:spkCount+Nspikes-1)=Pks(:,1);
             
-            spk.WidthAll(spkCount:spkCount+Nspikes-1)=num2cell(Width,2); 
-            spk.WidthDet(spkCount:spkCount+Nspikes-1)=Width(:,1); 
+            spk.WidthAll(spkCount:spkCount+Nspikes-1)=num2cell(Width,2);
+            spk.WidthDet(spkCount:spkCount+Nspikes-1)=Width(:,1);
             
+            spk.chListRawAll(spkCount:spkCount+Nspikes-1)=num2cell(chListRaw,2);
             spk.chListAll(spkCount:spkCount+Nspikes-1)=num2cell(chList,2);
             
             %entries wit spikes x 1
@@ -224,86 +226,89 @@ for p=1:length(id.probes)
         end %if no spikes
     end %for ch
     
-    % now go through and flag potential duplicates - we do this at the spike
-    %level (only flag events that are separately detected on multiple channels;
-    %different from the amplitude extraction at neighboring channels
-    %happening above)
-    spk.flagDuplicate=zeros(size(spk.spkTimesDet));
-    spk.NDuplicate=zeros(size(spk.spkTimesDet));
-    timesIdx=[1:length(spk.spkTimesDet)];
-
-    %for each threshold crossing, find out how many other threshold
-    %crossings occur within the tolerance window
-    tol=spkTol/max(spk.spkTimesDet); %uniquetol scales by maximum
-    
-    [~,~,idxB]=uniquetol(spk.spkTimesDet,tol); %get unique events plus/minus tolerance
-    countDup=accumarray(idxB,1); %count how often each duplicate shows up in spkTimesDet
-    spk.NDuplicate=countDup(idxB); %build vector that gives N for each event
-    spk.NDuplicate=spk.NDuplicate';
-    
-    %in addition to figuring out whether an event is detected on multiple
-    %channels, get the one that has the maximal amplitude and flag the rest
-    %as potential duplicates; this only will be applied to channels that
-    %are close enough
-    
-    for i=1:id.probes(p).nChannels
+    if isfield(spk,'spkTimesDet')
+        % now go through and flag potential duplicates - we do this at the spike
+        %level (only flag events that are separately detected on multiple channels;
+        %different from the amplitude extraction at neighboring channels
+        %happening above)
+        spk.flagDuplicate=zeros(size(spk.spkTimesDet));
+        spk.NDuplicate=zeros(size(spk.spkTimesDet));
+        timesIdx=[1:length(spk.spkTimesDet)];
         
-        %find spikes at detection channel, get their energy and position in
-        %spkTimes vector
-        detTimes=spk.spkTimesDet(spk.detCh==i);
-        timesIdxDet=timesIdx(spk.detCh==i);
-        enDet=spk.EnDet(spk.detCh==i);
-       
-        %spread out each event over neighboring samples (to give interval
-        %for detection)
-        detTimesConv=detTimes+[spkWindow(1):spkWindow(2)]'; 
-        detTimesConv=detTimesConv(:);
+        %for each threshold crossing, find out how many other threshold
+        %crossings occur within the tolerance window
+        tol=spkTol/max(spk.spkTimesDet); %uniquetol scales by maximum
         
-        %also need an index for grouping later
-        detIdxConv=repmat([1:length(detTimes)],spkWindow(2)-spkWindow(1)+1,1);
-        detIdxConv=detIdxConv(:);
+        [~,~,idxB]=uniquetol(spk.spkTimesDet,tol); %get unique events plus/minus tolerance
+        countDup=accumarray(idxB,1); %count how often each duplicate shows up in spkTimesDet
+        spk.NDuplicate=countDup(idxB); %build vector that gives N for each event
+        spk.NDuplicate=spk.NDuplicate';
         
-        %get the other channels
-        chList=spikeData(i+offsetCh).channelIds-offsetCh; %since detCh is probe specific 
-        chList=chList(2:end); %need to remove center channel
+        %in addition to figuring out whether an event is detected on multiple
+        %channels, get the one that has the maximal amplitude and flag the rest
+        %as potential duplicates; this only will be applied to channels that
+        %are close enough
         
-        %find overlapping events 
-        tf=ismember(spk.detCh,chList) & ismember(spk.spkTimesDet,detTimesConv);
-        
-        %only continue if there actually are any
-        if sum(tf)>0
-            %get energy of overlapping events
-            enCh=spk.EnDet(tf);
-            
-            %get their index in the spkTimesDet vector
-            timesIdxCh=timesIdx(tf);
-            
-            %get index of original event to use as grouping par
-            [~,locB]=ismember(spk.spkTimesDet(tf),detTimesConv);
-            idxCh=detIdxConv(locB);
-            
-            %generate one big array for accumarray
-            enAll=[enDet(unique(idxCh)) enCh]'; %we only want the relevant original spikes
-            idxAll=[unique(idxCh);idxCh];
-            timesIdxAll=[timesIdxDet(unique(idxCh)) timesIdxCh];
-            
-            %get maximum per group
-            maxData=accumarray(idxAll,enAll,[],@max);
-            
-            %flag which of the overlapping events are not the maximum (i.e.
-            %duplicates)
-            flagD = enAll~=maxData(idxAll);
-            
-            %put back into large vector
-            idxD=timesIdxAll(flagD);
-            spk.flagDuplicate(idxD)=1; %set to zero outside loop; so events that get flagged multiple times are still ok
-        end
-    end %for ch
-    
+        for i=1:id.probes(p).nChannels
+            if sum(spk.detCh==i)>0
+                
+                %find spikes at detection channel, get their energy and position in
+                %spkTimes vector
+                detTimes=spk.spkTimesDet(spk.detCh==i);
+                timesIdxDet=timesIdx(spk.detCh==i);
+                enDet=spk.EnDet(spk.detCh==i);
+                
+                %spread out each event over neighboring samples (to give interval
+                %for detection)
+                detTimesConv=detTimes+[spkWindow(1):spkWindow(2)]';
+                detTimesConv=detTimesConv(:);
+                
+                %also need an index for grouping later
+                detIdxConv=repmat([1:length(detTimes)],spkWindow(2)-spkWindow(1)+1,1);
+                detIdxConv=detIdxConv(:);
+                
+                %get the other channels
+                chList=spikeData(i+offsetCh).channelIds-offsetCh; %since detCh is probe specific
+                chList=chList(2:end); %need to remove center channel
+                
+                %find overlapping events
+                tf=ismember(spk.detCh,chList) & ismember(spk.spkTimesDet,detTimesConv);
+                
+                %only continue if there actually are any
+                if sum(tf)>0
+                    %get energy of overlapping events
+                    enCh=spk.EnDet(tf);
+                    
+                    %get their index in the spkTimesDet vector
+                    timesIdxCh=timesIdx(tf);
+                    
+                    %get index of original event to use as grouping par
+                    [~,locB]=ismember(spk.spkTimesDet(tf),detTimesConv);
+                    idxCh=detIdxConv(locB);
+                    
+                    %generate one big array for accumarray
+                    enAll=[enDet(unique(idxCh)) enCh]'; %we only want the relevant original spikes
+                    idxAll=[unique(idxCh);idxCh];
+                    timesIdxAll=[timesIdxDet(unique(idxCh)) timesIdxCh];
+                    
+                    %get maximum per group
+                    maxData=accumarray(idxAll,enAll,[],@max);
+                    
+                    %flag which of the overlapping events are not the maximum (i.e.
+                    %duplicates)
+                    flagD = enAll~=maxData(idxAll);
+                    
+                    %put back into large vector
+                    idxD=timesIdxAll(flagD);
+                    spk.flagDuplicate(idxD)=1; %set to zero outside loop; so events that get flagged multiple times are still ok
+                end
+            end %if sum
+        end %for ch
+    end
     %add expname just in case
     spk.expname=expname;
     spk.probeId=p;
-
+    
     outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(jobID) '_p' num2str(p) '_spkinfo']);
     save(outname,'spk','-v7.3');
     
@@ -324,9 +329,8 @@ disp(['extractSpikes job ID ' num2str(jobID) ' done.'])
 
 
 
-            
-            
-            
-     
-            
-  
+
+
+
+
+

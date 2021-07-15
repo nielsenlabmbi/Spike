@@ -93,39 +93,43 @@ minData=movmin(Data,[nTime+1 nTime],1);
 %    minData(:,1+(i-1)*id.probes.nChannels/id.probes.nShanks:i*id.probes.nChannels/id.probes.nShanks)=movmin(minTmp,9,2);
 %end
 
-if settings.useRefrSpace
-    %this should only be executed for the probes; we want to keep the signals
-    %from tetrode wires independent
-    if length(id.probes)>1 || ~strcmp(id.probes.type,'single') && ~strcmp(id.probes.type,'tetrode')
-        
-        minDataTmp=minData;
-        
-        for p=1:length(id.probes)
-            for i=1:id.probes(p).nChannels
-                
-                offsetCh=sum([id.probes(1:p-1).nChannels]); %0 for p=1
-                
-                if ~thresholding.badChannels(i+offsetCh)
-                    distCh=sqrt((id.probes(p).x-id.probes(p).x(i)).^2+(id.probes(p).z-id.probes(p).z(i)).^2);
-                    mask=(distCh<=settings.refrSpace);
-                    
-                    maskFull=false(nChannels,1);
-                    maskFull(offsetCh+1:offsetCh+length(mask),1)=mask;
-                    
-                    minData(:,i+offsetCh)=min(minDataTmp(:,maskFull),[],2);
-                end
-            end
-        end
-        
-        clear minDataTmp;
-    end
-end
+% if settings.useRefrSpace
+%     %this should only be executed for the probes; we want to keep the signals
+%     %from tetrode wires independent
+%     if length(id.probes)>1 || ~strcmp(id.probes.type,'single') && ~strcmp(id.probes.type,'tetrode')
+%         
+%         minDataTmp=minData;
+%         
+%         for p=1:length(id.probes)
+%             for i=1:id.probes(p).nChannels
+%                 
+%                 offsetCh=sum([id.probes(1:p-1).nChannels]); %0 for p=1
+%                 
+%                 if ~thresholding.badChannels(i+offsetCh)
+%                     distCh=sqrt((id.probes(p).x-id.probes(p).x(i)).^2+(id.probes(p).z-id.probes(p).z(i)).^2);
+%                     mask=(distCh<=settings.refrSpace);
+%                     
+%                     maskFull=false(nChannels,1);
+%                     maskFull(offsetCh+1:offsetCh+length(mask),1)=mask;
+%                     
+%                     minData(:,i+offsetCh)=min(minDataTmp(:,maskFull),[],2);
+%                 end
+%             end
+%         end
+%         
+%         clear minDataTmp;
+%     end
+% end
 
 
 %% Detect threshold crossings within .3msec
 %detect threshold crossings
-AboveTh=Data>thresholding.thresholds';
-
+if size(thresholding.thresholds,1)==1
+    AboveTh=Data>thresholding.thresholds;
+else
+    AboveTh=Data>thresholding.thresholds';
+end
+    
 %get the transition points from below to above threshold (negative
 %circshift shifts backwards, so this marks the last 1 (above threshold)
 %before a 0 (below threshold)
