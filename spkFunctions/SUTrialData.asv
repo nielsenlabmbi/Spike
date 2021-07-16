@@ -1,0 +1,96 @@
+%function SUTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTime,stimTime)
+%this function extracts spike times for identifed SU and MU spikes (noise
+%and none are excluded) for each trial, also computes mean number of spikes
+%and rates in windows before/after event
+%
+%input:
+%physpath: path to phys data (e.g., z:\ephysNew)
+%animal: animal id
+%unit: unit id (string)
+%exp: exp id (string)
+%probeId: probe id (number)
+%eventType: id - decimal number for event; ch - 'on' for 1 selected channel
+%eId: either decimal number for trigger event, or channel number
+%baseTime: time before event to include (in ms)
+%stimTime: time after event to include (in ms)
+%
+%output:
+%structure SU, one entry per cell
+%fields:
+%unitID: unit id from sort file
+%unitClass: unit category from sort file (SU or MU)
+%eventType, eventId, baseTime & stimTime: copies of the input variables
+%spktimes: spike times for every trial, in ms
+%baseNspk: number of spikes in baseline period
+%baseFrate: firing rate in Hz in baseline period
+%stimNspk: number of spikes in stimulus period
+%stimFrate: firing rate in Hz in stimulus period
+
+
+
+physpath='C:\Kristina\ephys';
+animal='feaz5';
+unit='000';
+exp='002';
+probeId=1;
+eventType='ch';
+eId=2;
+baseTime=0.5;
+stimTime=1;
+
+
+basename=fullfile(physpath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '_' exp]);
+
+%load trial info
+load([basename '_trialInfo.mat']);
+
+%load SU data
+load([basename '_p' num2str(probeId) '_spkSort.mat']);
+
+%get sampling rate
+header=read_Intan_Header([basename '_info.rhd']);
+sampleFrq = header.sample_rate;
+
+%translate time windows into samples
+baseSample=round(baseTime*sampleFrq);
+stimSample=round(stimTime*sampleFrq);
+
+%figure out which single units we want
+unitIdx=find(strcmp(spkSort.unitinfo,'SU') | strcmp(spkSort.unitinfo,'MU'));
+
+%find events
+if strcmp(eventType,'id')
+    eventIdx=find(trialInfo.eventId==eId);
+else
+    eventIdx=find(trialInfo.eventCh(:,eId)==1);
+end
+
+%loop through units and events to get data
+for u=1:length(unitIdx)
+    %base info
+    SU(u).unitId=unitIdx(u);
+    SU(u).unitClass=spkSort.unitinfo{u};
+    SU(u).eventType=eventType;
+    SU(u).eventId=eId;
+    SU(u).baseTime=baseTime;
+    SU(u).stimTime=stimTime;
+    
+    for i=1:length(eventIdx)
+        eTime=trialInfo.eventTimes(eventIdx(i));
+
+        sidx=find(spkSort.unitid==unitIdx(u) & spkSort.spktimes>eTime-baseSample & spkSort.spktimes<eTime+stimSample);
+        SU(u).spktimes{i}=(spkSort.spktimes(sidx)-eTime)/sampleFrq*1000;
+        
+        bidx=find(spkSort.unitid==unitIdx(u) & spkSort.spktimes>eTime-baseSample & spkSort.spktimes<eTime);
+        SU(u).baseNspk(i)=length(bidx);
+        SU(u).baseFrate(i)=length(bidx)/baseTime;
+       
+        stidx=find(spkSort.unitid==unitIdx(u) & spkSort.spktimes>eTime & spkSort.spktimes<eTime+stimSample);
+        SU(u).stimNspk(i)=length(stidx);
+        SU(u).stimFrate(i)=length(stidx)/stimTime;
+    end
+end
+
+%
+
+
