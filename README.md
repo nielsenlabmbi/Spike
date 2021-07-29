@@ -7,7 +7,7 @@
    - visually set threshold for each channel, mark bad channels
    - needs microprobe_wiring directory and read_Intan_Header
    - note: runs on all channels (across probes)
-   *Output: filename_threshold.mat and filename_id.mat; generates SpikeFiles folder*
+   *Output: filename_threshold.mat and filename_id.mat (locally and on Z if selected); generates SpikeFiles folder*
 
 2) extractSpikes and extractSpikesSettings (GUI):
    - first generate settings file (saved locally) with general settings using GUI
@@ -17,14 +17,14 @@
    - note: run with parfor loop to speed up processing time
    - note: first job should be 0, not 1
    - note: this runs on all channels, independent of probe
-   *Output: SpikeFiles\filename_jID_spike.mat; updates to _id.mat file*
+   *Output: SpikeFiles\filename_jID_spike.mat; updates to _id.mat file (local and on Z if selected)*
 
 3) extractSpikeProps:
    - extract set of properties for each waveform
    - to run, use *extractSpikeProps(expFolder,animalId,unitId,ExpId,jobId,name)*, where *expFolder* is the base folder for physiology files, and *name* is the initials of the person executing the command
    - note: use parfor to speed up processing time
    - note: splits data into separate files for each probe
-   *Output: SpikeFiles\filename_jID_pX_spkinfo.mat; updates to _id.mat file*
+   *Output: SpikeFiles\filename_jID_pX_spkinfo.mat; updates to _id.mat file (local and on Z if selected)*
 
 4) sortGUI (GUI):
    - sort data
@@ -38,7 +38,7 @@
    - waveform plot: choose up to 2 units to display; can add additional waveforms for comparison; nr spikes controls how many spikes are shown per unit
    - unit footprint: distribution of detection channels for a selected unit
    - output is spkSort structure, which in addition to general info contains *unitid*: vector with unit assignment for each time stamp (-1 artefact, no distinction between SU, MU and noise), *spktimes*: vector with all spike time stamps, *unitinfo*: cell array with type assignemt (SU, MU, noise, none) for each unitid
-   *Output: filename_pX_spkSort.mat*
+   *Output: filename_pX_spkSort.mat (local and on Z); updates to _id.mat file (local and on Z) and database*
 
 5) for unsorted (MUA) analysis - mergeSpkInfo:
    - merges the individual spkInfo files into one file for MUA analysis

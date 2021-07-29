@@ -249,6 +249,12 @@ if JobID==0
     id.extractSpikes.jobEdges=edgeSample;
     
     save(fullfile(settings.expFolder,animalID,expname,[expname settings.extId]),'id'); 
+    
+    if settings.copyToZ==1
+        zbase='Z:\EphysNew\data';
+        save(fullfile(zbase,animalID,expname,[expname settings.extId]),'id'); 
+    end
+    
 end
 
 disp(['extractSpikes job ID ' num2str(JobID) ' done.'])

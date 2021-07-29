@@ -1,4 +1,4 @@
-function extractSpikeProps(expFolder,animalID,unitID,expID,jobID,name)
+function extractSpikeProps(expFolder,animalID,unitID,expID,jobID,name,copyToZ)
 % extract properties for spikes (one job file at a time)
 % input parameters:
 % animalID - animal ID (string)
@@ -7,6 +7,7 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,jobID,name)
 % expFolder - base folder for experiments (string)
 % jobID - job ID of raw spike file to process (number)
 % name - name or initials of person running the script (for bookkeeping)
+% copyToZ - copy id file to Z?
 %
 % output parameters:
 % structure spk with fields (each is a vector/matrix with entries for each
@@ -322,6 +323,10 @@ if jobID==0
     id.extractSpikeProps.name=name;
     id.extractSpikeProps.date=date;
     save(fullfile(expFolder,animalID,expname,[expname '_id']),'id');
+    if copyToZ==1
+        zbase='Z:\EphysNew\data';
+        save(fullfile(zbase,animalID,expname,[expname '_id']),'id'); 
+    end
 end
 
 
