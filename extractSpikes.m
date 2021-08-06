@@ -1,12 +1,15 @@
-function extractSpikes(animalID,unitID,expID,settings,parts,JobID)
+function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,parts,JobID)
 % extractSpikes computes spike waveforms
 % input parameters:
+% expFolder - experiment folder
 % animalID - animal ID (string)
 % unitID - unit ID (string)
 % expID - experiment ID (string)
-% settings - structure with settings parameters
+% probeID - probe number to process
 % parts - number of segments to divide the data file into
 % JobID - current segment to process; starts with 0
+% name - initials
+% copyToZ - copy id file to Z
 
 % output (saved in matlab file)
 % spikeData - structure with fields (one per detection channel)
@@ -21,17 +24,23 @@ function extractSpikes(animalID,unitID,expID,settings,parts,JobID)
 
 % requires SpikeFiles directory to be present in the experiment folder
 % also updates the id file
+%% global settings
+settings.refrTime=1; %timeout before and after large minima in ms
+settings.refrCross=0.5; %timeout after threshold crossing in ms
+settings.spikeSamples=15; %number of sample points per spike before and after the minimum
+settings.spikeRadius=100; %distance radius over which to extract spike waveforms
+
 %% generate basic info
 %load threshold and id data
 expname=[animalID '_u' unitID '_' expID];
-load(fullfile(settings.expFolder,animalID,expname,[expname settings.extThres])); %generates thresholding
-load(fullfile(settings.expFolder,animalID,expname,[expname settings.extId])); %generates id
+load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_threshold.mat'])); %generates thresholding
+load(fullfile(expFolder,animalID,expname,[expname '_id.mat'])); %generates id
 
 %compute total channel number
 nChannels=sum([id.probes.nChannels]);
 
 %get file size
-filename=fullfile(settings.expFolder,animalID,expname,[expname settings.extData]);
+filename=fullfile(expFolder,animalID,expname,[expname '_amplifier.dat']);
 fileinfo = dir(filename);
 samples = fileinfo.bytes/(2*nChannels); % Number of samples in amplifier data file
 samplesPerJob = ceil(samples/parts); % Number of samples to allocate to each of the 200 jobs
@@ -55,6 +64,14 @@ else
     Data = fread(DataFile, [nChannels samplesPerJob], 'int16'); % If JobID isn't the last job, read samplesPerJob samples past the file position set by fseek
 end
 
+%extract only data for the relevant channels (only necessary if there are 2
+%probes)
+if length(id.probes)>1
+    startidx=sum([id.probes(1:probeID-1).nChannels])+1; %0 for probe 1
+    stopidx=startidx+id.probes(probeID).nChannels-1;
+    Data=Data(startidx:stopidx,:);
+end
+    
 %transpose data - matlab is faster with the longer dimension as rows rather
 %than columns
 Data=Data';
@@ -168,73 +185,71 @@ Spikes(end-floor(partsOverlapSamples/2):end,:)=0;
 %% extract the actual waveforms
 
 %output file - we're saving each job separately so that things can run in parallel
-outname=fullfile(settings.expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(JobID) settings.extSpike]); 
+outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(JobID) '_p' num2str(probeID)  '_spike.mat']); 
 matOut=matfile(outname,'Writable',true);
 
 %add settings and original file name for record keeping
 matOut.settings=settings;
 matOut.expname=expname;
 
-for p=1:length(id.probes)
-    for i=1:id.probes(p).nChannels
-            
-        offsetCh=sum([id.probes(1:p-1).nChannels]); %0 for p=1
-        
-        if ~thresholding.badChannels(i+offsetCh)
+
+for i=1:size(Data,2)
     
-            %initialize output - we're collecting things in a structure here, to
-            %add it to the matfile object later; we're only extracting spike
-            %data here, rest will happen in next file to make it easier to add
-            %new properties
-            spikeData = struct;
-            
-            Times = find(Spikes(:,i+offsetCh)>0); % Find coordinates where spikes occurred
-            spikeData.spikeTimes=Times+firstSample;
-            
-            Nspikes=length(Times);
-            %continue only if there are spikes
-            if Nspikes>0
-                
-                %extract waveforms - we are ignoring the shank here, since shanks might
-                %be close enough to pick up the same waveforms
-                %the number of channels in this radius will be variable across
-                %channels, but should be very similar for neighboring channels and will
-                %be constant for each channel
-                %we're reorganizing things according to distance to the
-                %detection channel, which also makes the detection channel
-                %the first entry in the waveform matrices
-                distCh=sqrt((id.probes(p).x-id.probes(p).x(i)).^2+(id.probes(p).z-id.probes(p).z(i)).^2);
-                [distOrg,distIdx]=sort(distCh);                
-                spikeData.channelIds=distIdx(distOrg<=settings.spikeRadius)+offsetCh; %add offset back to get to correct channels
-                Nch=length(spikeData.channelIds);
-                         
-                wv=Data([-settings.spikeSamples:settings.spikeSamples]+Times,spikeData.channelIds);
-            
-                Ntime=2*settings.spikeSamples+1;
-                spikeData.rawWvfrms=reshape(wv,[Nspikes Ntime Nch]); %dimensions: spike x timepoints x channel
+    if ~thresholding.badChannels(i)
         
-                %normalize by baseline
-                Nbase=floor(settings.spikeSamples/2);
-                spikeData.Wvfrms=spikeData.rawWvfrms-mean(spikeData.rawWvfrms(:,1:Nbase,:),2);
-                
-                %save
-                matOut.spikeData(1,i+offsetCh)=spikeData;
-            else
-                spikeData.spikeTimes=NaN;
-                spikeData.channelIds=NaN;
-                spikeData.rawWvfrms=NaN;
-                spikeData.Wvfrms=NaN;
-                matOut.spikeData(1,i+offsetCh)=spikeData;
-                
-            end
+        %initialize output - we're collecting things in a structure here, to
+        %add it to the matfile object later; we're only extracting spike
+        %data here, rest will happen in next file to make it easier to add
+        %new properties
+        spikeData = struct;
+        
+        Times = find(Spikes(:,i)>0); % Find coordinates where spikes occurred
+        spikeData.spikeTimes=Times+firstSample;
+        
+        Nspikes=length(Times);
+        %continue only if there are spikes
+        if Nspikes>0
+            
+            %extract waveforms - we are ignoring the shank here, since shanks might
+            %be close enough to pick up the same waveforms
+            %the number of channels in this radius will be variable across
+            %channels, but should be very similar for neighboring channels and will
+            %be constant for each channel
+            %we're reorganizing things according to distance to the
+            %detection channel, which also makes the detection channel
+            %the first entry in the waveform matrices
+            distCh=sqrt((id.probes(probeID).x-id.probes(probeID).x(i)).^2+(id.probes(probeID).z-id.probes(probeID).z(i)).^2);
+            [distOrg,distIdx]=sort(distCh);
+            spikeData.channelIds=distIdx(distOrg<=settings.spikeRadius); %add offset back to get to correct channels
+            Nch=length(spikeData.channelIds);
+            
+            wv=Data([-settings.spikeSamples:settings.spikeSamples]+Times,spikeData.channelIds);
+            
+            Ntime=2*settings.spikeSamples+1;
+            spikeData.rawWvfrms=reshape(wv,[Nspikes Ntime Nch]); %dimensions: spike x timepoints x channel
+            
+            %normalize by baseline
+            Nbase=floor(settings.spikeSamples/2);
+            spikeData.Wvfrms=spikeData.rawWvfrms-mean(spikeData.rawWvfrms(:,1:Nbase,:),2);
+            
+            %save
+            matOut.spikeData(1,i)=spikeData;
+        else
+            spikeData.spikeTimes=NaN;
+            spikeData.channelIds=NaN;
+            spikeData.rawWvfrms=NaN;
+            spikeData.Wvfrms=NaN;
+            matOut.spikeData(1,i)=spikeData;
+            
         end
     end
 end
 
+
 %for job 0, add info to id file for bookkeeping
 if JobID==0
     id.extractSpikes.date=date;
-    id.extractSpikes.name=settings.name;
+    id.extractSpikes.name=name;
    
     jobVec=[0:parts-1];
     startSample = samplesPerJob*jobVec - partsOverlapSamples; 
@@ -248,11 +263,11 @@ if JobID==0
     id.extractSpikes.jobStop=stopSample;
     id.extractSpikes.jobEdges=edgeSample;
     
-    save(fullfile(settings.expFolder,animalID,expname,[expname settings.extId]),'id'); 
+    save(fullfile(expFolder,animalID,expname,[expname '_id.mat']),'id'); 
     
-    if settings.copyToZ==1
+    if copyToZ==1
         zbase='Z:\EphysNew\data';
-        save(fullfile(zbase,animalID,expname,[expname settings.extId]),'id'); 
+        save(fullfile(zbase,animalID,expname,[expname '_id.mat']),'id'); 
     end
     
 end
