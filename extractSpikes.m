@@ -266,7 +266,7 @@ if JobID==0
     save(fullfile(expFolder,animalID,expname,[expname '_id.mat']),'id'); 
     
     if copyToZ==1
-        zbase='Z:\EphysNew\data';
+        zbase='Z:\EphysNew\processedSpikes';
         save(fullfile(zbase,animalID,expname,[expname '_id.mat']),'id'); 
     end
     

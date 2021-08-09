@@ -312,7 +312,7 @@ if jobID==0
     id.extractSpikeProps.date=date;
     save(fullfile(expFolder,animalID,expname,[expname '_id']),'id');
     if copyToZ==1
-        zbase='Z:\EphysNew\data';
+        zbase='Z:\EphysNew\processedSpikes';
         save(fullfile(zbase,animalID,expname,[expname '_id']),'id');
     end
 end
