@@ -76,12 +76,11 @@ end
 %than columns
 Data=Data';
 
-% Filter and normalize to threshold
+% Filter 
 Data = filter(thresholding.butter.b1, thresholding.butter.a1, Data,[],1);
 
 % set bad channels to NaN (could also remove them)
 Data(:,logical(thresholding.badChannels))=NaN; %this propagates the choice to the output
-numChs = sum(~thresholding.badChannels); % Number of good channels
 
 
 
@@ -242,6 +241,12 @@ for i=1:size(Data,2)
             matOut.spikeData(1,i)=spikeData;
             
         end
+    else
+        spikeData.spikeTimes=NaN;
+        spikeData.channelIds=NaN;
+        spikeData.rawWvfrms=NaN;
+        spikeData.Wvfrms=NaN;
+        matOut.spikeData(1,i)=spikeData;
     end
 end
 
