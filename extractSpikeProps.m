@@ -5,10 +5,11 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,
 % unitID - unit ID (string)
 % expID - experiment ID (string)
 % expFolder - base folder for experiments (string)
+% probeID - probe ID (number)
 % jobID - job ID of raw spike file to process (number)
 % name - name or initials of person running the script (for bookkeeping)
 % copyToZ - copy id file to Z?
-% probeID - probe ID
+
 %
 % output parameters:
 % structure spk with fields (each is a vector/matrix with entries for each

@@ -5,7 +5,7 @@ function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,part
 % animalID - animal ID (string)
 % unitID - unit ID (string)
 % expID - experiment ID (string)
-% probeID - probe number to process
+% probeID - probe number to process (number)
 % parts - number of segments to divide the data file into
 % JobID - current segment to process; starts with 0
 % name - initials
