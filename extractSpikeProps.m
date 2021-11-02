@@ -154,11 +154,11 @@ for i=1:id.probes(probeID).nChannels
         xpos=id.probes(probeID).x(chId);
         zpos=id.probes(probeID).z(chId);
         
-        comXMin=nansum(abs(AmpMin).*xpos',2)./nansum(abs(AmpMin),2);
-        comZMin=nansum(abs(AmpMin).*zpos',2)./nansum(abs(AmpMin),2);
+        comXMin=sum(abs(AmpMin).*xpos',2,'omitnan')./sum(abs(AmpMin),2,'omitnan');
+        comZMin=sum(abs(AmpMin).*zpos',2,'omitnan')./sum(abs(AmpMin),2,'omitnan');
         
-        comXEn=nansum(En.*xpos',2)./nansum(En,2);
-        comZEn=nansum(En.*zpos',2)./nansum(En,2);
+        comXEn=sum(En.*xpos',2,'omitnan')./sum(En,2,'omitnan');
+        comZEn=sum(En.*zpos',2,'omitnan')./sum(En,2,'omitnan');
         
         comZEnShaft=comZEn+(maxZ+100)*(id.probes(probeID).shaft(i)-1); %buffer of 100um between shafts
         comZMinShaft=comZMin+(maxZ+100)*(id.probes(probeID).shaft(i)-1);
