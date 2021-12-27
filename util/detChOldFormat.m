@@ -130,7 +130,7 @@ if plotChecks==1
     %filter settings
     hp=250;
     lp=5000;
-    [b1,a1]=butter(3,[hp/id.sampleRate,lp/id.sampleRate]*2,'bandpass');
+    [b1,a1]=butter(3,[hp/id.sampleFreq,lp/id.sampleFreq]*2,'bandpass');
 
     %determine which channels to plot - linearly subsample channel range
     if nrPlotCh>nChIn
@@ -153,7 +153,7 @@ if plotChecks==1
 
         for i=1:nrPlotEvent
             frewind(fid);
-            startSample=plotEvIdx(i)-id.sampleRate/2; %keeping this long for filtering
+            startSample=plotEvIdx(i)-id.sampleFreq/2; %keeping this long for filtering
                         
             if probeId==2
                 cc=plotChIdx(c)+id.probes(1).nChannels;
@@ -162,7 +162,7 @@ if plotChecks==1
             end
 
             fseek(fid,2*sum([id.probes.nChannels])*startSample+2*(cc-1),'bof');
-            tc = fread(fid, id.sampleRate, 'int16',2*(sum([id.probes.nChannels])-1));
+            tc = fread(fid, id.sampleFreq, 'int16',2*(sum([id.probes.nChannels])-1));
 
             %filter
             datFilt=filter(b1,a1,tc);
@@ -170,7 +170,7 @@ if plotChecks==1
 
             %get waveform
             px=nexttile;
-            plot([-20:20]./id.sampleRate*1000,datFilt(id.sampleRate/2-20:id.sampleRate/2+20))
+            plot([-20:20]./id.sampleFreq*1000,datFilt(id.sampleFreq/2-20:id.sampleFreq/2+20))
             hold on
             xline(0,'r-')
             title(['Ch: ' num2str(plotChIdx(c))])
