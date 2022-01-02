@@ -24,10 +24,12 @@ for i=startID:stopID
         spkMerge.spktimes=spk.spkTimesDet;
         spkMerge.detCh=spk.detCh;
         spkMerge.detChSort=spk.detChSort;
+        spkMerge.jobId=ones(size(spk.spkTimesDet))*i;
     else
         spkMerge.spktimes=[spkMerge.spktimes spk.spkTimesDet];
         spkMerge.detCh=[spkMerge.detCh spk.detCh];
         spkMerge.detChSort=[spkMerge.detChSort spk.detChSort];
+        spkMerge.jobId=[spkMerge.jobId ones(size(spk.spkTimesDet))*i];
     end
     clear spk;
 end

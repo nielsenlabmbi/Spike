@@ -35,7 +35,7 @@ settings.spikeRadius=100; %distance radius over which to extract spike waveforms
 expname=[animalID '_u' unitID '_' expID];
 
 %test whether spikefiles folder exists (usually generated using threshold gui)
-if exist(fullfile(expfolder,animalID,expname,'SpikeFiles'),'dir')~=7
+if exist(fullfile(expFolder,animalID,expname,'SpikeFiles'),'dir')~=7
     disp('SpikeFiles folder does not exist! Cannot proceed.')
     return;
 end
@@ -116,7 +116,7 @@ for i=1:size(Data,2)
     %new properties
     spikeData = struct;
 
-    spkidx=find(spkSort.spktimes>=startFile & spkSort.spktimes<=stopFile & spkSort.detCh==i);
+    spkidx=find(spkSort.spktimes>=startFile & spkSort.spktimes<stopFile & spkSort.detCh==i);
 
     Nspikes=length(spkidx);
     %continue only if there are spikes
@@ -194,6 +194,11 @@ if JobID==0
         save(fullfile(zbase,animalID,expname,[expname '_id.mat']),'id'); 
     end
     
+    %we also need to add some info to spkSort for the sortGui to work
+    spkSort.info.jobStart=0;
+    spkSort.info.jobStop=parts-1;
+    spkSort.info.artRej='Off';
+    save(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_spkSort']),'spkSort');
 end
 
 disp(['extractSpikes job ID ' num2str(JobID) ' done.'])
