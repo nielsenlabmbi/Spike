@@ -1,41 +1,51 @@
-%specify input file - this should be a spike or Spike file converted to
-%spkSort
-spkSortIn='E:\test sorting\FEAM5_u000_000\FEAM5_u000_000_P2_spkSort.mat';
+function detChOldFormat(expFolder,animalID,unitID,expID,probeID,detChannelMethod,spikesIn,plotChecks,rawDataFolder,nrPlotCh,nrPlotEvent)
+%function to compute the raw detection channel (i.e. the Intan recording channel)
+%for the spike or Spike files generated with the original spike sorter
+%NOTE: MAKE SURE RESULTS APPEAR REASONABLE BY PLOTTING DATA
 
-%specify method used to generate detection channels
+%input parameters:
+% expFolder - experiment folder
+% animalID - animal ID (string)
+% unitID - unit ID (string)
+% expID - experiment ID (string)
+% probeID - probe number to process (number)
+
+%spkSortIn: spkSort input file
+
+%detChannelMethod: method used to generate detection channels
 %1: use detChSort of spkSort structure (=Properties(16,:) of spikes or
 %spikes File); this only works if there were no bad channels
 %2: use experiment file; this only works if experiments file has not been
 %overwritten (for multiple probes)
 %3: use Properties(17,:) and Properties(18,:) from spikes file
-detChannelMethod=1;
 
-%for method 3, also need the name of the spikes or Spikes file to be loaded
-spikesIn='D:\AllSpikesFiles\FEAT1_u002_000_P1_Spikes.mat';
+%spikesIn: only needed for method 3, spikes or Spikes file to be loaded
+%(can be empty string otherwise)
 
-%decide whether to check assignment by plotting spikes
-plotChecks=1;
+%plotCheck: 1 enables plotting spikes to check channel assignemt
 
-%if plotting, also need raw data file and number of channels, events to
-%plot
-rawDataIn='E:\test sorting\FEAM5_u000_000\FEAM5_u000_000_amplifier.dat';
-nrPlotCh=10;
-nrPlotEvent=5;
+%the next 3 parameters are only needed when plotting, otherwise provide
+%empty strings
+%rawDataFolder: base name of folder containing amplifier file for raw data
+%(e.g., z:\EphysNew); animal, experiment etc are added automatically
+%nrPlotCh: number of channels to plot (which channels is randomly selected)
+%nrPlotEvent: number of events to plot (again, randomly selected)
+
 
 %% channel conversion code
 %parse file name and figure out probe number
-[~,filename,~]=fileparts(spkSortIn);
-pidx=strfind(filename,'_P');
-probeId=filename(pidx+2);
+expname=[animalID '_u' unitID '_' expID];
+load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_spkSort'])); %generates spkSort
+nChIn=length(unique(spkSort.detChSort));
+
 
 %load id file
-idname=replace(spkSortIn,['_P' probeId '_spkSort'],'_id');
-load(idname); %generates id
+load(fullfile(expFolder,animalID,expname,[expname '_id.mat'])); %generates id
+
 
 %get probe type
-probeId=str2num(probeId);
-probeType=id.probes(probeId).type;
-nChProbe=id.probes(probeId).nChannels;
+probeType=id.probes(probeID).type;
+nChProbe=id.probes(probeID).nChannels;
 
 %get channel configuration used in makeExperimentFile
 switch probeType
@@ -47,9 +57,6 @@ switch probeType
         CHs = [13,20,12,21,11,22,10,23,9,24,8,25,7,26,6,27,5,28,4,29,3,30,2,31,1,32,14,19,15,18,16,17,45,52,44,53,43,54,42,55,41,56,40,57,39,58,38,59,37,60,36,61,35,62,34,63,33,64,46,51,47,50,48,49] ;
 end
 
-%load spkSort file
-load(spkSortIn); %generates spkSort structure
-nChIn=length(unique(spkSort.detChSort));
 
 switch detChannelMethod
     case 1 %use detChSort as is
@@ -66,7 +73,7 @@ switch detChannelMethod
     case 2 %use experiment.mat
         %load experiment file
         fbase=fileparts(spkSortIn);
-        load(fullfile(fbase,'experiment.mat'));
+        load(expFolder,animalID,expname,'experiment.mat');
 
         %check whether length of exeriment.mat matches length of channels in
         %spkSort
@@ -76,7 +83,7 @@ switch detChannelMethod
         end
 
         %also check if second probe (if applicable)
-        if probeId==2
+        if probeID==2
             minEx=find(BadCh==0,1,'first');
             maxEx=find(BadCh==0,1,'last');
 
@@ -112,7 +119,7 @@ switch detChannelMethod
         chmap=zeros(max(chid),1);
         for i=chid
             idx=find(Properties(16,:)==i,1,'first');
-            chidx=find(id.probes(probeId).x==Properties(17,idx) & id.probes(probeId).z==Properties(18,idx));
+            chidx=find(id.probes(probeID).x==Properties(17,idx) & id.probes(probeID).z==Properties(18,idx));
             if ~isempty(chidx)
                 chmap(i)=chidx;
             else
@@ -142,7 +149,9 @@ if plotChecks==1
     t=tiledlayout(nrPlotCh,nrPlotEvent);
     t.TileSpacing='compact';
     t.Padding='compact';
-    fid = fopen(rawDataIn,'r');
+
+    fid = fopen(fullfile(rawDataFolder,animalID,expname,[expname '_amplifier.dat']),'r');
+    
     for c=1:nrPlotCh
         %random events
         evIdx=spkSort.spktimes(spkSort.detCh==plotChIdx(c));
@@ -155,7 +164,7 @@ if plotChecks==1
             frewind(fid);
             startSample=plotEvIdx(i)-id.sampleFreq/2; %keeping this long for filtering
                         
-            if probeId==2
+            if probeID==2
                 cc=plotChIdx(c)+id.probes(1).nChannels;
             else
                 cc=plotChIdx(c);
@@ -187,4 +196,6 @@ end
 
 
 %% save
-save(spkSortIn,'spkSort');
+%remove detChSort to avoid confusion later on
+spkSort=rmfield(spkSort,'detChSort');
+save(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_spkSort']),'spkSort');

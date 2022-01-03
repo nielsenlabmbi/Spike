@@ -61,4 +61,28 @@
    *Output: filename_pX_SUTrial.mat* 
 
 
+## Using the new spike sorting pipeline with old data:
+The new spike sorting GUI can be used with data processed with the old spike sorting process by following these steps (all of these files can be found in util):
+1) Make sure a spkSort file has been generated for the old data
+2) Compute the raw (Intan) detection channel:
+   - function: detChOldFormat 
+   - In the old system, channels were sorted according to their position on the probe before extracting spikes. The tranformation from recording channel to detection channel was hard coded, and differs slightly from our current method. Depending on the time at which the data was sorted, the spike/Spike file may contain the recording channel in addition to the sorting channel, but the detCh entry always refers to the sorted channels. In addition, it also removes channels that were marked as bad, which may be recorded in the experiment.mat file (which doesn't exist for all files, and was overwritten in the case of sorting files with multiple probes).
+   - To compute the original detection channel therefore requires a few assumptions, and differs based on what is available. It is important to check that this step is done correctly by plotting the data.
+   - The function adds a removes 'detChSort' from spkSort to avoid conflicts with the detChSort assigned in spike Sorting.
+ 3) Extract spike waveforms:
+   - function: extractSpikesOldFormat
+   - This function uses the detCh info added to spkSort in step 2 to extract waveforms from the amplifier file at the time stamps saved in spkSort (which are the ones contained in the original spike or Spike file). It uses the same parameters as extractSpikes (radius and spikeSamples), and organizes channels the same way as used in the new pipeline.
+   - Before running the code, make sure the SpikeFiles folder exists (usually generated during thresholding)
+ 4) Extract spike properties:
+   - function: extractSpikeProps
+   - same function used normally
+ 5) Reorganize spkSort order
+   - function: resortSpkSort
+   - this step is crucial to avoid having units matched to the wrong timestamps; it reorganizes the entries in spkSort according to job, channel and timestamp rather than timestamp
+   - also adds a few other fields that are needed by the sortGui
+ 6) Sort:
+   - use same sortGui as always
+   - Note: While we are keeping the same time stamps and therefore extracting the same basic waveforms as in the original implementation, there are some differences in how things are computed, most notably anything that has to do with channel position (such as the center of mass for the channel)
+   - Also note that this obviously does not change how the channels were assigned during initial sorting (with a minimum applied across channels instead of keeping channels indepedent as in the new version)
+
 

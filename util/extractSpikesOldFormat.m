@@ -193,12 +193,6 @@ if JobID==0
         zbase='Z:\EphysNew\processedSpikes';
         save(fullfile(zbase,animalID,expname,[expname '_id.mat']),'id'); 
     end
-    
-    %we also need to add some info to spkSort for the sortGui to work
-    spkSort.info.jobStart=0;
-    spkSort.info.jobStop=parts-1;
-    spkSort.info.artRej='Off';
-    save(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_spkSort']),'spkSort');
 end
 
 disp(['extractSpikes job ID ' num2str(JobID) ' done.'])
