@@ -40,7 +40,11 @@ trialInfo.eventTimes=find(dDigital~=0)+1;
 trialInfo.eventId=digiData(trialInfo.eventTimes);
 
 %in addition to raw event codes,translate into individual channels on/off
-trialInfo.eventCh=de2bi(trialInfo.eventId,3);
+if max(trialInfo.eventId)<=7
+    trialInfo.eventCh=de2bi(trialInfo.eventId,3);
+else
+    trialInfo.eventCh=de2bi(trialInfo.eventId,4);
+end
 
 %save
 save(replace(physname,'digitalin.dat','trialInfo'),'trialInfo')

@@ -4,15 +4,15 @@ function SUTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTime,sti
 %and rates in windows before/after event
 %
 %input:
-%physpath: path to phys data (e.g., z:\ephysNew)
+%physpath: path to phys data (e.g., z:\ephysNew\processedSpikes)
 %animal: animal id
 %unit: unit id (string)
 %exp: exp id (string)
 %probeId: probe id (number)
 %eventType: id - decimal number for event; ch - 'on' for 1 selected channel
 %eId: either decimal number for trigger event, or channel number
-%baseTime: time before event to include (in ms)
-%stimTime: time after event to include (in ms)
+%baseTime: time before event to include (in s)
+%stimTime: time after event to include (in s)
 %
 %output:
 %structure SU, one entry per cell
@@ -69,6 +69,7 @@ for u=1:length(unitIdx)
 
         sidx=find(spkSort.unitid==unitIdx(u) & spkSort.spktimes>eTime-baseSample & spkSort.spktimes<eTime+stimSample);
         SU(u).spktimes{i}=sort((spkSort.spktimes(sidx)-eTime)/sampleFrq*1000);
+        SU(u).Nspk(i)=length(sidx);
         
         bidx=find(spkSort.unitid==unitIdx(u) & spkSort.spktimes>eTime-baseSample & spkSort.spktimes<eTime);
         SU(u).baseNspk(i)=length(bidx);
