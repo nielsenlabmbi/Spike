@@ -1,14 +1,15 @@
-function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,jobID)
+function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUflag,jobID)
 % extract properties for spikes (one job file at a time)
 % input parameters:
+% expFolder - base folder for experiments (string)
 % animalID - animal ID (string)
 % unitID - unit ID (string)
 % expID - experiment ID (string)
-% expFolder - base folder for experiments (string)
 % probeID - probe ID (number)
-% jobID - job ID of raw spike file to process (number)
 % name - name or initials of person running the script (for bookkeeping)
 % copyToZ - copy id file to Z?
+% MUflag - 0 normal, 1 use MUspike files
+% jobID - job ID of raw spike file to process (number)
 
 %
 % output parameters:
@@ -26,10 +27,9 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,
 % - comXEnDet,comZEnDet: center of mass for x and z, based on energy
 % - comZMinDetShaft, comZEnDetShaft: center of mass for z, organized to
 % split shafts (based on detection channel)
-% - timesDet: spike times for detection channels
+% - spkTimesDet: spike times for detection channels
 % - detCh: id of detection channel
 % - detChSort: id of detection channel, sorted according to Z and shank
-% - detProbe: id of detection probe
 % - flagDuplicate: possible detection of one spike as separate events on
 % different channels
 % - NDuplicate: for each spike, number of channels with a simultaneously
@@ -53,7 +53,11 @@ spkTol=5; %window over which threshold crossings are considered duplicates/artef
 
 %open matfile with spike data
 %generates spikeData and settings
-load(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spike']));
+if MUflag==0
+    load(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spike']));
+else
+    load(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_MUspike']));
+end
 %samples per spike waveform
 spikeSamples=settings.spikeSamples;
 
@@ -299,7 +303,12 @@ end
 spk.expname=expname;
 spk.probeId=probeID;
 
-outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkinfo']);
+if MUflag==0
+    outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkinfo']);
+else
+    outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_MUspkinfo']);
+end
+
 save(outname,'spk','-v7.3');
 
 
@@ -309,8 +318,23 @@ save(outname,'spk','-v7.3');
 
 %add to id file for job 0 for bookkeeping
 if jobID==0
-    id.extractSpikeProps.name=name;
-    id.extractSpikeProps.date=date;
+
+%need to clean up previous versions that didn't index according to
+    %probe
+    if ~iscell(id.extractSpikeProps.date)
+        id.extractSpikeProps=rmfield(id.extractSpikeProps,'date');
+    end
+    if ~iscell(id.extractSpikeProps.name)
+        id.extractSpikeProps=rmfield(id.extractSpikeProps,'name');
+    end
+
+    if MUflag==0
+        id.extractSpikeProps.name{probeID}=name;
+        id.extractSpikeProps.date{probeID}=date;
+    else
+        id.MUextractSpikeProps.name{probeID}=name;
+        id.MUextractSpikeProps.date{probeID}=date;
+    end
     save(fullfile(expFolder,animalID,expname,[expname '_id']),'id');
     if copyToZ==1
         zbase='Z:\EphysNew\processedSpikes';

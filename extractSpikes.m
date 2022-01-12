@@ -1,4 +1,4 @@
-function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,parts,JobID)
+function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUflag,parts,JobID)
 % extractSpikes computes spike waveforms
 % input parameters:
 % expFolder - experiment folder
@@ -6,10 +6,11 @@ function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,part
 % unitID - unit ID (string)
 % expID - experiment ID (string)
 % probeID - probe number to process (number)
-% parts - number of segments to divide the data file into
-% JobID - current segment to process; starts with 0
 % name - initials
 % copyToZ - copy id file to Z
+% MU flag - 1 = use MUthresholds rather than thresholds, save as MUspk 
+% parts - number of segments to divide the data file into
+% JobID - current segment to process; starts with 0
 
 % output (saved in matlab file)
 % spikeData - structure with fields (one per detection channel)
@@ -29,11 +30,17 @@ settings.refrTime=1; %timeout before and after large minima in ms
 settings.refrCross=0.5; %timeout after threshold crossing in ms
 settings.spikeSamples=15; %number of sample points per spike before and after the minimum
 settings.spikeRadius=100; %distance radius over which to extract spike waveforms
+settings.offsetSamples=400; %this used to be partsOverlapSamples; overlap between files (increased to avoid filtering artefact)
 
 %% generate basic info
 %load threshold and id data
 expname=[animalID '_u' unitID '_' expID];
-load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_threshold.mat'])); %generates thresholding
+if MUflag==0
+    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_threshold.mat'])); %generates thresholding
+else
+    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_MUthresh.mat'])); %generates MUthresholding
+    thresholding=MUthresholding;
+end
 load(fullfile(expFolder,animalID,expname,[expname '_id.mat'])); %generates id
 
 %compute total channel number
@@ -44,12 +51,11 @@ filename=fullfile(expFolder,animalID,expname,[expname '_amplifier.dat']);
 fileinfo = dir(filename);
 samples = fileinfo.bytes/(2*nChannels); % Number of samples in amplifier data file
 samplesPerJob = ceil(samples/parts); % Number of samples to allocate to each of the 200 jobs
-partsOverlapSamples = floor((2/1000)*id.sampleFreq); % get 2msec overlap between samples
 
 
 
 %% read data
-firstSample = samplesPerJob*JobID - partsOverlapSamples; % Sets first sample to process; each job has 1st 2msec overlap with previous job and last 2msec overlap with next job
+firstSample = samplesPerJob*JobID - settings.offsetSamples; % Sets first sample to process; each job has 1st 2msec overlap with previous job and last 2msec overlap with next job
 if firstSample<0
     firstSample=0;
 end
@@ -58,7 +64,7 @@ DataFile = fopen(filename,'r'); % Load amplifier data
 fseek(DataFile,2*nChannels*firstSample,'bof'); % Offset from beginning of file
 
 if JobID == parts-1 % The last job - first JobID is 0
-    samplesLeft = samples - samplesPerJob*(parts-1) + partsOverlapSamples; % samplesLeft=TotalSamples-SamplesDone+Overhang
+    samplesLeft = samples - samplesPerJob*(parts-1) + settings.offsetSamples; % samplesLeft=TotalSamples-SamplesDone+Overhang
     Data = fread(DataFile, [nChannels samplesLeft], 'int16'); % If JobID is the last job, read all the samples left
 else
     Data = fread(DataFile, [nChannels samplesPerJob], 'int16'); % If JobID isn't the last job, read samplesPerJob samples past the file position set by fseek
@@ -177,14 +183,18 @@ Spikes = CrossTh & minData==Data;
 
 % Removes spikes detected in the first 1msec overlap at the beginning and end of each job. 
 %This is important as some of these may go beyond recording to get waveform.
-Spikes(1:floor(partsOverlapSamples/2),:)=0; 
-Spikes(end-floor(partsOverlapSamples/2):end,:)=0; 
+Spikes(1:floor(settings.offsetSamples/2),:)=0; 
+Spikes(end-floor(settings.offsetSamples/2):end,:)=0; 
 
 
 %% extract the actual waveforms
 
 %output file - we're saving each job separately so that things can run in parallel
-outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(JobID) '_p' num2str(probeID)  '_spike.mat']); 
+if MUflag==0
+    outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(JobID) '_p' num2str(probeID)  '_spike.mat']);
+else
+    outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(JobID) '_p' num2str(probeID)  '_MUspike.mat']); 
+end
 matOut=matfile(outname,'Writable',true);
 
 %add settings and original file name for record keeping
@@ -253,20 +263,39 @@ end
 
 %for job 0, add info to id file for bookkeeping
 if JobID==0
-    id.extractSpikes.date=date;
-    id.extractSpikes.name=name;
-   
     jobVec=[0:parts-1];
-    startSample = samplesPerJob*jobVec - partsOverlapSamples; 
+    startSample = samplesPerJob*jobVec - settings.offsetSamples;
     startSample(startSample<0)=0;
     stopSample=startSample+samplesPerJob;
     stopSample(end)=samples;
-    edgeSample=startSample+partsOverlapSamples/2; %boundaries between samples
+    edgeSample=startSample+settings.offsetSamples/2; %boundaries between samples
     edgeSample(end+1)=samples; %to finish the last bin
-    
-    id.extractSpikes.jobStart=startSample;
-    id.extractSpikes.jobStop=stopSample;
-    id.extractSpikes.jobEdges=edgeSample;
+
+    %need to clean up previous versions that didn't index according to
+    %probe
+    if ~iscell(id.extractSpikes.date)
+        id.extractSpikes=rmfield(id.extractSpikes,'date');
+    end
+    if ~iscell(id.extractSpikes.name)
+        id.extractSpikes=rmfield(id.extractSpikes,'name');
+    end
+
+
+    if MUflag==0
+        id.extractSpikes.date{probeID}=date;
+        id.extractSpikes.name{probeID}=name;
+
+        id.extractSpikes.jobStart=startSample;
+        id.extractSpikes.jobStop=stopSample;
+        id.extractSpikes.jobEdges=edgeSample;
+    else
+        id.MUextractSpikes.date{probeID}=date;
+        id.MUextractSpikes.name{probeID}=name;
+
+        id.MUextractSpikes.jobStart=startSample;
+        id.MUextractSpikes.jobStop=stopSample;
+        id.MUextractSpikes.jobEdges=edgeSample;
+    end
     
     save(fullfile(expFolder,animalID,expname,[expname '_id.mat']),'id'); 
     
