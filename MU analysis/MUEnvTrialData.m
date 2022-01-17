@@ -1,9 +1,8 @@
-function MUTrialData(physpath,sortpath,animal,unit,exp,probeID,eventType,eId,baseTime,stimTime)
-%compute MUA (Nikos method) for every trial
+function MUEnvTrialData(physpath,animal,unit,exp,probeID,eventType,eId,baseTime,stimTime)
+%compute MUEnv (Nikos method) for every trial
 
 %input:
 %physpath: path to amplifier file
-%sortpath: path to id and trialinfo files
 %animal: animal id
 %unit: unit id (string)
 %exp: exp id (string)
@@ -13,15 +12,14 @@ function MUTrialData(physpath,sortpath,animal,unit,exp,probeID,eventType,eId,bas
 %baseTime: time before event to include (in s)
 %stimTime: time after event to include (in s)
 
-physname=fullfile(physpath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '_' exp]);
-idname=fullfile(sortpath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '_' exp]);
+basename=fullfile(physpath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '_' exp]);
 
 %load id file (for recording and probe info)
-load([idname '_id.mat']); %generates id
+load([basename '_id.mat']); %generates id
 nrChTotal=sum([id.probes.nChannels]);
 
 %load trialinfo file (for trial information)
-load([idname '_trialInfo.mat']); %generates trialInfo
+load([basename '_trialInfo.mat']); %generates trialInfo
 
 %make filter - 500Hz to 3kHz
 [butter_b,butter_a] = butter(3,[500 3000]/(id.sampleFreq/2),'bandpass');
@@ -40,7 +38,7 @@ end
 
 
 %open amplifier file
-dataFileId = fopen([physname '_amplifier.dat'],'r');
+dataFileId = fopen([basename '_amplifier.dat'],'r');
 
 
 for i=1:length(eventIdx)
@@ -75,45 +73,35 @@ for i=1:length(eventIdx)
     
     
     %also compute Z transform
+    baseSampleDec=baseSample/(id.sampleFreq/1000);
+    meanBase=mean(decData(1:baseSampleDec,:),1);
+    stdBase=std(decData(1:baseSampleDec,:),0,1);
+    zDecData=(decData-meanBase)./stdBase;
     
     %collect
-    MUA(:,:,i)=decData;
-    
-    for j=1:nCh
-     
-          
-        %z transform 
-        baseL=beforeS/30;
-        meanBase=mean(decData(baseL/2:baseL)); %avoid initial part b/c of artefact
-        stdBase=std(decData(baseL/2:baseL));
-        decDataZ=(decData-meanBase)/stdBase;
-        
-        
-        avgOut(j,:)=avgOut(j,:)+decData;
-        avgOutZ(j,:)=avgOutZ(j,:)+decDataZ;
-    end
-
+    MUEnv(:,:,i)=decData;
+    zMUEnv(:,:,i)=zDecData;
 end
 
 
 %document settings
-MUinfo.eventType=eventType;
-MUinfo.eventId=eId;
-MUinfo.baseTime=baseTime;
-MUinfo.stimTime=stimTime;
+MUEnvInfo.eventType=eventType;
+MUEnvInfo.eventId=eId;
+MUEnvInfo.baseTime=baseTime;
+MUEnvInfo.stimTime=stimTime;
 
 %copy trial info
-MUinfo.dom=trialInfo.dom;
-MUinfo.domval=trialInfo.domval;
-MUinfo.blankId=trialInfo.blankId;
-MUinfo.triallist=trialInfo.triallist;
+MUEnvInfo.dom=trialInfo.dom;
+MUEnvInfo.domval=trialInfo.domval;
+MUEnvInfo.blankId=trialInfo.blankId;
+MUEnvInfo.triallist=trialInfo.triallist;
 
 %copy position info
-MUinfo.xpos=id.probes(probeID).x;
-MUinfo.zpos=id.probes(probeID).z;
-MUinfo.shaft=id.probes(probeID).shaft;
-MUinfo.zshaft=id.probes(probeID).z+100*
+MUEnvInfo.xpos=id.probes(probeID).x;
+MUEnvInfo.zpos=id.probes(probeID).z;
+MUEnvInfo.shaft=id.probes(probeID).shaft;
+MUEnvInfo.zshaft=id.probes(probeID).z+100*(id.probes(probeID).shaft-1);%buffer of 100um between shafts
 
-        
-        comZEnShaft=comZEn+(maxZ+100)*(id.probes(probeID).shaft(i)-1); %buffer of 100um between shafts
-        comZMinShaft=comZMin+(maxZ+100)*(id.probes(probeID).shaft(i)-1);
+%save
+save([basename '_p' num2str(probeID) '_MUEnvTrial.mat'],'MUEnv','zMUEnv','MUEnvInfo');
+

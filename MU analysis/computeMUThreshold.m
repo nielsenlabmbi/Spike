@@ -71,6 +71,6 @@ if copyToZ==1
     expname=[animal '_u' unit '_' exp];
     zbase='Z:\EphysNew\processedSpikes';
     save(fullfile(zbase,animalID,expname,[expname '_id.mat']),'id');
-    save(fullfile(zbase,animalID,expname,[expname '_p' num2str(probeID) '_MUthresh.mat']),'MUthresholding');
+    save(fullfile(zbase,animalID,expname,[expname '_p' num2str(probeID) '_MUthreshold.mat']),'MUthresholding');
 end
 

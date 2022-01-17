@@ -38,7 +38,7 @@ expname=[animalID '_u' unitID '_' expID];
 if MUflag==0
     load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_threshold.mat'])); %generates thresholding
 else
-    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_MUthresh.mat'])); %generates MUthresholding
+    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_MUthreshold.mat'])); %generates MUthresholding
     thresholding=MUthresholding;
 end
 load(fullfile(expFolder,animalID,expname,[expname '_id.mat'])); %generates id
