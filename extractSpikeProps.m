@@ -318,8 +318,8 @@ if isfield(spk,'spkTimesDet')
                 %channel of interest)
                 enAll=[enDet(unique(idxCh)) enCh]'; %we only want the original events that had overlaps
                 idxAll=[unique(idxCh);idxCh]; %group by trigger event id
-                timesIdxAll=[timesIdxDet(unique(idxCh)) timesIdxCh]; %indexes into spkTimesDet ultimately
-                detChAll=[repmat(i,1,length(unique(idxCh))) detCh];
+                timesIdxAll=[timesIdxDet(unique(idxCh)) timesIdxCh]'; %indexes into spkTimesDet ultimately
+                detChAll=[repmat(i,1,length(unique(idxCh))) detCh]';
                 
                 %get maximum per group
                 maxData=accumarray(idxAll,enAll,[],@max); %in maxdata, a group shows up in the row corresponding to its index value
@@ -333,6 +333,8 @@ if isfield(spk,'spkTimesDet')
                     maxCh(m)=detChAll(mx);
                     maxTime(m)=timesIdxAll(mx);
                 end
+                maxChD = maxCh(idxAll);
+                maxTimeD = maxTime(idxAll);
 
                 %flag which of the overlapping events are not the maximum (i.e.
                 %duplicates)
@@ -340,32 +342,33 @@ if isfield(spk,'spkTimesDet')
                 %channel; otherwise a channel in the middle can propagate
                 %events over a much larger distance than intended
                 %previously: flagD = enAll~=maxData(idxAll)
+                %disp(size(enAll))
+                %disp(size(detChAll))
                 flagD = (enAll~=maxData(idxAll) & detChAll==i);
 
-                %transform maximum data into the correct form
-                maxChD = maxCh(idxAll);
-                maxChD = maxChD(flagD);
-                maxTimeD = maxTime(idxAll);
-                maxTimeD = maxTimeD(flagD);
-
-                
-                %put back into large vector
-                idxD=timesIdxAll(flagD);
-                spk.flagDuplicate(idxD)=spk.flagDuplicate(idxD)+1; %set to zero outside loop; so events that get flagged multiple times are still ok
-
-
-                %need to get the right indices  to save maximum time and
-                %channel - matrices will grow in the case that there are
-                %conflicts with multiple events
-                %flagDuplicate serves as counter
-                if max(spk.flagDuplicate(idxD))>size(spk.duplicateMxCh,1) %need to append dimensions so that sub2ind works correctly
-                    spk.duplicateMxCh(max(spk.flagDuplicate(idxD)),:)=0;
-                    spk.duplicateMxIdx(max(spk.flagDuplicate(idxD)),:)=0;
+                if sum(flagD)>0
+                    %put back into large vector
+                    idxD=timesIdxAll(flagD);
+                    
+                    maxChD = maxChD(flagD);
+                    maxTimeD = maxTimeD(flagD);
+                    
+                    spk.flagDuplicate(idxD)=spk.flagDuplicate(idxD)+1; %set to zero outside loop; so events that get flagged multiple times are still ok
+                    
+                    
+                    %need to get the right indices  to save maximum time and
+                    %channel - matrices will grow in the case that there are
+                    %conflicts with multiple events
+                    %flagDuplicate serves as counter
+                    if max(spk.flagDuplicate(idxD))>size(spk.duplicateMxCh,1) %need to append dimensions so that sub2ind works correctly
+                        spk.duplicateMxCh(max(spk.flagDuplicate(idxD)),:)=0;
+                        spk.duplicateMxIdx(max(spk.flagDuplicate(idxD)),:)=0;
+                    end
+                    dupIdx=sub2ind(size(spk.duplicateMxCh),spk.flagDuplicate(idxD),idxD');
+                    
+                    spk.duplicateMxCh(dupIdx)=maxChD;
+                    spk.duplicateMxIdx(dupIdx)=maxTimeD;
                 end
-                dupIdx=sub2ind(size(spk.duplicateMxCh),spk.flagDuplicate(idxD),idxD);
-                
-                spk.duplicateMxCh(dupIdx)=maxChD;
-                spk.duplicateMxIdx(dupIdx)=maxTimeD;
             end
         end %if sum
     end %for ch
