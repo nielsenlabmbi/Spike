@@ -45,17 +45,9 @@ for i=startID:stopID
         %merging of duplicate channels and idx requires expansion of
         %matrices to make things fit
         nRowIn=size(spk.duplicateMxCh,1);
-        nRowOut=size(MUspkMerge.duplicateMxCh,1);
-        if nRowIn>nRowOut
-            MUspkMerge.duplicateMxCh(nRowIn,:)=0;
-            MUspkMerge.duplicateMxIdx(nRowIn,:)=0;
-        end
-        if nRowIn<nRowOut
-            spk.duplicateMxCh(nRowOut,:)=0;
-            spk.duplicateMxIdx(nRowOut,:)=0;
-        end
-        MUspkMerge.duplicateMxCh=[MUspkMerge.duplicateMxCh spk.duplicateMxCh];
-        MUspkMerge.duplicateMxIdx=[MUspkMerge.duplicateMxIdx spk.duplicateMxIdx];
+        nRowOut=
+        if >size(MUspkMerge.duplicateMxCh,1)
+            MUspkMerge.duplicateMxCh(size(spk.duplicateMxCh,1)
         
     end
     clear spk;

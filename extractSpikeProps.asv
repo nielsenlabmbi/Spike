@@ -309,14 +309,12 @@ if isfield(spk,'spkTimesDet')
                 detCh=spk.detCh(tf);
 
                 %get index of triggering event to use as grouping par
-                %we're doing it this way because there are different
-                %numbers of overlapping events for every spike on the detection channel
                 [~,locB]=ismember(spk.spkTimesDet(tf),detTimesConv); %need tf here to restrict to events in the right channels
                 idxCh=detIdxConv(locB); %id of trigger event
                 
                 %generate one big array for accumarray (enDet is the
                 %channel of interest)
-                enAll=[enDet(unique(idxCh)) enCh]'; %we only want the original events that had overlaps
+                enAll=[enDet(unique(idxCh)) enCh]'; %we only want the relevant original spikes
                 idxAll=[unique(idxCh);idxCh]; %group by trigger event id
                 timesIdxAll=[timesIdxDet(unique(idxCh)) timesIdxCh]; %indexes into spkTimesDet ultimately
                 detChAll=[repmat(i,1,length(unique(idxCh))) detCh];
@@ -336,11 +334,7 @@ if isfield(spk,'spkTimesDet')
 
                 %flag which of the overlapping events are not the maximum (i.e.
                 %duplicates)
-                %we only eliminate the spikes on the current detection
-                %channel; otherwise a channel in the middle can propagate
-                %events over a much larger distance than intended
-                %previously: flagD = enAll~=maxData(idxAll)
-                flagD = (enAll~=maxData(idxAll) & detChAll==i);
+                flagD = enAll~=maxData(idxAll);
 
                 %transform maximum data into the correct form
                 maxChD = maxCh(idxAll);
@@ -353,17 +347,13 @@ if isfield(spk,'spkTimesDet')
                 idxD=timesIdxAll(flagD);
                 spk.flagDuplicate(idxD)=spk.flagDuplicate(idxD)+1; %set to zero outside loop; so events that get flagged multiple times are still ok
 
-
                 %need to get the right indices  to save maximum time and
                 %channel - matrices will grow in the case that there are
                 %conflicts with multiple events
                 %flagDuplicate serves as counter
-                if max(spk.flagDuplicate(idxD))>size(spk.duplicateMxCh,1) %need to append dimensions so that sub2ind works correctly
-                    spk.duplicateMxCh(max(spk.flagDuplicate(idxD)),:)=0;
-                    spk.duplicateMxIdx(max(spk.flagDuplicate(idxD)),:)=0;
-                end
-                dupIdx=sub2ind(size(spk.duplicateMxCh),spk.flagDuplicate(idxD),idxD);
-                
+                disp(max(spk.flagDuplicate(idxD)))
+                dupIdx=sub2ind([max(spk.flagDuplicate(idxD)) length(spk.flagDuplicate)],spk.flagDuplicate(idxD),idxD);
+                if 
                 spk.duplicateMxCh(dupIdx)=maxChD;
                 spk.duplicateMxIdx(dupIdx)=maxTimeD;
             end
@@ -381,6 +371,10 @@ else
 end
 
 save(outname,'spk','-v7.3');
+
+
+
+
 
 
 %add to id file for job 0 for bookkeeping
