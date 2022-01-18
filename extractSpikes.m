@@ -28,7 +28,7 @@ function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUfl
 %% global settings
 settings.refrTime=1; %timeout before and after large minima in ms
 settings.refrCross=0.5; %timeout after threshold crossing in ms
-settings.spikeSamples=15; %number of sample points per spike before and after the minimum
+settings.spikeSamples=[15 25]; %number of sample points per spike before and after the minimum, used to be [15 15]
 settings.spikeRadius=100; %distance radius over which to extract spike waveforms
 settings.offsetSamples=400; %this used to be partsOverlapSamples; overlap between files (increased to avoid filtering artefact)
 
@@ -232,14 +232,13 @@ for i=1:size(Data,2)
             spikeData.channelIds=distIdx(distOrg<=settings.spikeRadius); %add offset back to get to correct channels
             Nch=length(spikeData.channelIds);
             
-            wv=Data([-settings.spikeSamples:settings.spikeSamples]+Times,spikeData.channelIds);
+            wv=Data([-settings.spikeSamples(1):settings.spikeSamples(2)]+Times,spikeData.channelIds);
             
-            Ntime=2*settings.spikeSamples+1;
+            Ntime=sum(settings.spikeSamples)+1;
             spikeData.rawWvfrms=reshape(wv,[Nspikes Ntime Nch]); %dimensions: spike x timepoints x channel
             
             %normalize by baseline
-            Nbase=floor(settings.spikeSamples/2);
-            spikeData.Wvfrms=spikeData.rawWvfrms-mean(spikeData.rawWvfrms(:,1:Nbase,:),2);
+            spikeData.Wvfrms=spikeData.rawWvfrms-mean(spikeData.rawWvfrms(:,1:settings.spikeSamples(1),:),2);
             
             %save
             matOut.spikeData(1,i)=spikeData;

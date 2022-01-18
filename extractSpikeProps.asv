@@ -68,6 +68,7 @@ else
 end
 %samples per spike waveform
 spikeSamples=settings.spikeSamples;
+Nsample=sum(spikeSamples)+1;
 
 %% go through spike file, compute properties for each spike, collected in arrays
 
@@ -100,7 +101,7 @@ for i=1:id.probes(probeID).nChannels
         %we will base these on the derivative - we want a minimum
         %that is the local minimum around the minimum time at the
         %detection channel (for which the minimum will be at
-        %spikeSamples+1), and a maximum that is the first maximum
+        %spikeSamples(1)+1), and a maximum that is the first maximum
         %after the positive going part of the waveform
         %both are more correctly detected based on the slope rather
         %than using min/max over a set interval
@@ -114,9 +115,9 @@ for i=1:id.probes(probeID).nChannels
         %2nd derivative of the sign
         Wv2Der=diff(Wv1Der,1,2);
         
-        %minimum: maximum in 2nd derivative around the spikeSamples+1
+        %minimum: maximum in 2nd derivative around  spikeSamples+1
         %using +-5 data points for now
-        [minDer,TimeMin]=max(Wv2Der(:,spikeSamples+spkWindow(1):spikeSamples+spkWindow(2),:),[],2);
+        [minDer,TimeMin]=max(Wv2Der(:,spikeSamples(1)+spkWindow(1):spikeSamples(1)+spkWindow(2),:),[],2);
         
         %because of how diff works, max of derivative is one ahead of true min, also
         %add time offset relative to original waveform
@@ -142,9 +143,13 @@ for i=1:id.probes(probeID).nChannels
         %channel
         %min automatically returns the index to the first occurence if
         %the minimum occurs more than once
-        [~,TimeMax]=min(Wv2Der(:,spikeSamples+1:end,:),[],2);
+        [maxDer,TimeMax]=min(Wv2Der(:,spikeSamples+1:end,:),[],2);
         TimeMax=squeeze(TimeMax)+spikeSamples+1; %spikes x channel
-
+        %if there is no maximum (peak cut off), then set maximum to end of
+        %window
+        TimeMax(squeeze(maxDer)==0)=size;
+        
+        
         %maximum before the peak (minimum in 2nd derivative)
         %min automatically returns the index to the first occurence if
         %the minimum occurs more than once
@@ -309,15 +314,17 @@ if isfield(spk,'spkTimesDet')
                 detCh=spk.detCh(tf);
 
                 %get index of triggering event to use as grouping par
+                %we're doing it this way because there are different
+                %numbers of overlapping events for every spike on the detection channel
                 [~,locB]=ismember(spk.spkTimesDet(tf),detTimesConv); %need tf here to restrict to events in the right channels
                 idxCh=detIdxConv(locB); %id of trigger event
                 
                 %generate one big array for accumarray (enDet is the
                 %channel of interest)
-                enAll=[enDet(unique(idxCh)) enCh]'; %we only want the relevant original spikes
+                enAll=[enDet(unique(idxCh)) enCh]'; %we only want the original events that had overlaps
                 idxAll=[unique(idxCh);idxCh]; %group by trigger event id
-                timesIdxAll=[timesIdxDet(unique(idxCh)) timesIdxCh]; %indexes into spkTimesDet ultimately
-                detChAll=[repmat(i,1,length(unique(idxCh))) detCh];
+                timesIdxAll=[timesIdxDet(unique(idxCh)) timesIdxCh]'; %indexes into spkTimesDet ultimately
+                detChAll=[repmat(i,1,length(unique(idxCh))) detCh]';
                 
                 %get maximum per group
                 maxData=accumarray(idxAll,enAll,[],@max); %in maxdata, a group shows up in the row corresponding to its index value
@@ -331,31 +338,42 @@ if isfield(spk,'spkTimesDet')
                     maxCh(m)=detChAll(mx);
                     maxTime(m)=timesIdxAll(mx);
                 end
+                maxChD = maxCh(idxAll);
+                maxTimeD = maxTime(idxAll);
 
                 %flag which of the overlapping events are not the maximum (i.e.
                 %duplicates)
-                flagD = enAll~=maxData(idxAll);
+                %we only eliminate the spikes on the current detection
+                %channel; otherwise a channel in the middle can propagate
+                %events over a much larger distance than intended
+                %previously: flagD = enAll~=maxData(idxAll)
+                %disp(size(enAll))
+                %disp(size(detChAll))
+                flagD = (enAll~=maxData(idxAll) & detChAll==i);
 
-                %transform maximum data into the correct form
-                maxChD = maxCh(idxAll);
-                maxChD = maxChD(flagD);
-                maxTimeD = maxTime(idxAll);
-                maxTimeD = maxTimeD(flagD);
-
-                
-                %put back into large vector
-                idxD=timesIdxAll(flagD);
-                spk.flagDuplicate(idxD)=spk.flagDuplicate(idxD)+1; %set to zero outside loop; so events that get flagged multiple times are still ok
-
-                %need to get the right indices  to save maximum time and
-                %channel - matrices will grow in the case that there are
-                %conflicts with multiple events
-                %flagDuplicate serves as counter
-                disp(max(spk.flagDuplicate(idxD)))
-                dupIdx=sub2ind([max(spk.flagDuplicate(idxD)) length(spk.flagDuplicate)],spk.flagDuplicate(idxD),idxD);
-                if 
-                spk.duplicateMxCh(dupIdx)=maxChD;
-                spk.duplicateMxIdx(dupIdx)=maxTimeD;
+                if sum(flagD)>0
+                    %put back into large vector
+                    idxD=timesIdxAll(flagD);
+                    
+                    maxChD = maxChD(flagD);
+                    maxTimeD = maxTimeD(flagD);
+                    
+                    spk.flagDuplicate(idxD)=spk.flagDuplicate(idxD)+1; %set to zero outside loop; so events that get flagged multiple times are still ok
+                    
+                    
+                    %need to get the right indices  to save maximum time and
+                    %channel - matrices will grow in the case that there are
+                    %conflicts with multiple events
+                    %flagDuplicate serves as counter
+                    if max(spk.flagDuplicate(idxD))>size(spk.duplicateMxCh,1) %need to append dimensions so that sub2ind works correctly
+                        spk.duplicateMxCh(max(spk.flagDuplicate(idxD)),:)=0;
+                        spk.duplicateMxIdx(max(spk.flagDuplicate(idxD)),:)=0;
+                    end
+                    dupIdx=sub2ind(size(spk.duplicateMxCh),spk.flagDuplicate(idxD),idxD');
+                    
+                    spk.duplicateMxCh(dupIdx)=maxChD;
+                    spk.duplicateMxIdx(dupIdx)=maxTimeD;
+                end
             end
         end %if sum
     end %for ch
@@ -371,10 +389,6 @@ else
 end
 
 save(outname,'spk','-v7.3');
-
-
-
-
 
 
 %add to id file for job 0 for bookkeeping

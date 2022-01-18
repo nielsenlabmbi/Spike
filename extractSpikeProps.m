@@ -68,6 +68,7 @@ else
 end
 %samples per spike waveform
 spikeSamples=settings.spikeSamples;
+Nsample=sum(spikeSamples)+1;
 
 %% go through spike file, compute properties for each spike, collected in arrays
 
@@ -100,7 +101,7 @@ for i=1:id.probes(probeID).nChannels
         %we will base these on the derivative - we want a minimum
         %that is the local minimum around the minimum time at the
         %detection channel (for which the minimum will be at
-        %spikeSamples+1), and a maximum that is the first maximum
+        %spikeSamples(1)+1), and a maximum that is the first maximum
         %after the positive going part of the waveform
         %both are more correctly detected based on the slope rather
         %than using min/max over a set interval
@@ -114,17 +115,17 @@ for i=1:id.probes(probeID).nChannels
         %2nd derivative of the sign
         Wv2Der=diff(Wv1Der,1,2);
         
-        %minimum: maximum in 2nd derivative around the spikeSamples+1
+        %minimum: maximum in 2nd derivative around  spikeSamples+1
         %using +-5 data points for now
-        [minDer,TimeMin]=max(Wv2Der(:,spikeSamples+spkWindow(1):spikeSamples+spkWindow(2),:),[],2);
+        [minDer,TimeMin]=max(Wv2Der(:,spikeSamples(1)+spkWindow(1):spikeSamples(1)+spkWindow(2),:),[],2);
         
         %because of how diff works, max of derivative is one ahead of true min, also
         %add time offset relative to original waveform
-        TimeMin=squeeze(TimeMin)+spikeSamples+spkWindow(1); %spikes x channel
+        TimeMin=squeeze(TimeMin)+spikeSamples(1)+spkWindow(1); %spikes x channel
         
         %if there is no local minimum, use the minimum of the
         %detection channel
-        TimeMin(squeeze(minDer)==0)=spikeSamples+1;
+        TimeMin(squeeze(minDer)==0)=spikeSamples(1)+1;
         
         %now get minimum values
         %need to turn TimeMin into the correct index first
@@ -133,7 +134,7 @@ for i=1:id.probes(probeID).nChannels
         if Nspikes==1 %need to flip the time vector in this case
             TimeMin=TimeMin';
         end
-        mxIdx=sub2ind([Nspikes 2*spikeSamples+1 Nch],spkIdx,TimeMin,chIdx);
+        mxIdx=sub2ind([Nspikes Nsample Nch],spkIdx,TimeMin,chIdx);
         AmpMin=spikeData(i).Wvfrms(mxIdx); %spikes x channels
         
         
@@ -142,24 +143,28 @@ for i=1:id.probes(probeID).nChannels
         %channel
         %min automatically returns the index to the first occurence if
         %the minimum occurs more than once
-        [~,TimeMax]=min(Wv2Der(:,spikeSamples+1:end,:),[],2);
-        TimeMax=squeeze(TimeMax)+spikeSamples+1; %spikes x channel
-
+        [maxDer,TimeMax]=min(Wv2Der(:,spikeSamples(1)+1:end,:),[],2);
+        TimeMax=squeeze(TimeMax)+spikeSamples(1)+1; %spikes x channel
+        %if there is no maximum (peak cut off), then set maximum to end of
+        %window
+        TimeMax(squeeze(maxDer)==0)=Nsample;
+        
+        
         %maximum before the peak (minimum in 2nd derivative)
         %min automatically returns the index to the first occurence if
         %the minimum occurs more than once
-        [~,TimeMaxB]=min(Wv2Der(:,1:spikeSamples-1,:),[],2);
-        TimeMaxB=squeeze(TimeMaxB); %spikes x channel
-
+        [maxDerB,TimeMaxB]=min(Wv2Der(:,1:spikeSamples(1)-1,:),[],2);
+        TimeMaxB=squeeze(TimeMaxB)+1; %spikes x channel
+        TimeMaxB(squeeze(maxDerB)==0)=1;
         
         %now get maximum values
         if Nspikes==1 %need to flip the time vector in this case
             TimeMax=TimeMax';
             TimeMaxB=TimeMaxB';
         end
-        mxIdx=sub2ind([Nspikes 2*spikeSamples+1 Nch],spkIdx,TimeMax,chIdx);
+        mxIdx=sub2ind([Nspikes Nsample Nch],spkIdx,TimeMax,chIdx);
         AmpMax=spikeData(i).Wvfrms(mxIdx);
-        mxIdxB=sub2ind([Nspikes 2*spikeSamples+1 Nch],spkIdx,TimeMaxB,chIdx);
+        mxIdxB=sub2ind([Nspikes Nsample Nch],spkIdx,TimeMaxB,chIdx);
         AmpMaxB=spikeData(i).Wvfrms(mxIdxB);
 
         %peak to peak value
