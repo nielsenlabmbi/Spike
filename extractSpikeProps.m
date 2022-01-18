@@ -19,8 +19,11 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,
 % - EnDet: Energy for detection channel only (also contained in EnAll, this
 % is to speed up later computations that only need the detection channel)
 % - AmpMinAll, AmpMinDet: Minimum amplitude
-% - AmxMaxAll, AmpMaxDet: Maximum amplitude
-% - PksAll, PksDet: Max-Min
+% - AmxMaxAll, AmpMaxDet: Maximum amplitude for peak after minimum
+% - AmxMaxBeforeAll, AmpMaxBeforeDet: Maximum amplitude for peak before
+% minimum
+% - PksAll, PksDet: Max-Min using maximum after minimum
+% - PksBeforeAll, PksBeforeDet: Max-Min using maximum before minimum
 % - WidthAll, WidthDet: Time of max - time of min
 % - chListAll: List of channels included
 % - comXMinDet, comZMinDet: center of mass for x and z, based on minimum
@@ -30,10 +33,15 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,
 % - spkTimesDet: spike times for detection channels
 % - detCh: id of detection channel
 % - detChSort: id of detection channel, sorted according to Z and shank
-% - flagDuplicate: possible detection of one spike as separate events on
-% different channels
-% - NDuplicate: for each spike, number of channels with a simultaneously
-% detect spike
+% - NDuplicate: for each spike, number of channels (across the entire probe) with a simultaneously
+% detected spike
+% - flagDuplicate: detection of one spike as separate events on
+% different channels within a set radius; number indicates that the same spike was detected as
+% a duplicate multiple times (spike with highest energy is taken to be the
+% origin of the event)
+% - duplicateMxCh: for events flagged as duplicate, the channel that was
+% marked as the maximum/winning event
+% - duplicateMxIdx: index into spkTimesDet etc for the winning event
 %
 % splits data into separate files for each probe
 % also updates the id file
@@ -136,16 +144,27 @@ for i=1:id.probes(probeID).nChannels
         %the minimum occurs more than once
         [~,TimeMax]=min(Wv2Der(:,spikeSamples+1:end,:),[],2);
         TimeMax=squeeze(TimeMax)+spikeSamples+1; %spikes x channel
+
+        %maximum before the peak (minimum in 2nd derivative)
+        %min automatically returns the index to the first occurence if
+        %the minimum occurs more than once
+        [~,TimeMaxB]=min(Wv2Der(:,1:spikeSamples-1,:),[],2);
+        TimeMaxB=squeeze(TimeMaxB); %spikes x channel
+
         
         %now get maximum values
         if Nspikes==1 %need to flip the time vector in this case
             TimeMax=TimeMax';
+            TimeMaxB=TimeMaxB';
         end
         mxIdx=sub2ind([Nspikes 2*spikeSamples+1 Nch],spkIdx,TimeMax,chIdx);
         AmpMax=spikeData(i).Wvfrms(mxIdx);
-        
+        mxIdxB=sub2ind([Nspikes 2*spikeSamples+1 Nch],spkIdx,TimeMaxB,chIdx);
+        AmpMaxB=spikeData(i).Wvfrms(mxIdxB);
+
         %peak to peak value
         Pks = AmpMax-AmpMin;
+        PksB = AmpMaxB-AmpMin;
         
         %width
         Width=TimeMax-TimeMin;
@@ -194,9 +213,15 @@ for i=1:id.probes(probeID).nChannels
         
         spk.AmpMaxAll(spkCount:spkCount+Nspikes-1)=num2cell(AmpMax,2);
         spk.AmpMaxDet(spkCount:spkCount+Nspikes-1)=AmpMax(:,1);
+
+        spk.AmpMaxBeforeAll(spkCount:spkCount+Nspikes-1)=num2cell(AmpMaxB,2);
+        spk.AmpMaxBeforeDet(spkCount:spkCount+Nspikes-1)=AmpMaxB(:,1);
         
         spk.PksAll(spkCount:spkCount+Nspikes-1)=num2cell(Pks,2);
         spk.PksDet(spkCount:spkCount+Nspikes-1)=Pks(:,1);
+        
+        spk.PksBeforeAll(spkCount:spkCount+Nspikes-1)=num2cell(PksB,2);
+        spk.PksBeforeDet(spkCount:spkCount+Nspikes-1)=PksB(:,1);
         
         spk.WidthAll(spkCount:spkCount+Nspikes-1)=num2cell(Width,2);
         spk.WidthDet(spkCount:spkCount+Nspikes-1)=Width(:,1);
@@ -227,13 +252,15 @@ if isfield(spk,'spkTimesDet')
     %happening above)
     spk.flagDuplicate=zeros(size(spk.spkTimesDet));
     spk.NDuplicate=zeros(size(spk.spkTimesDet));
+    spk.duplicateMxCh=zeros(size(spk.spkTimesDet));
+    spk.duplicateMxIdx=zeros(size(spk.spkTimesDet));
     timesIdx=[1:length(spk.spkTimesDet)];
     
     %for each threshold crossing, find out how many other threshold
     %crossings occur within the tolerance window
     tol=spkTol/max(spk.spkTimesDet); %uniquetol scales by maximum
     
-    [~,~,idxB]=uniquetol(spk.spkTimesDet,tol); %get unique events plus/minus tolerance
+    [~,~,idxB]=uniquetol(spk.spkTimesDet,tol); %get unique events plus/minus tolerance, idxB is an index into spkTimesDet
     countDup=accumarray(idxB,1); %count how often each duplicate shows up in spkTimesDet
     spk.NDuplicate=countDup(idxB); %build vector that gives N for each event
     spk.NDuplicate=spk.NDuplicate';
@@ -254,18 +281,20 @@ if isfield(spk,'spkTimesDet')
             
             %spread out each event over neighboring samples (to give interval
             %for detection)
-            detTimesConv=detTimes+[spkWindow(1):spkWindow(2)]';
-            detTimesConv=detTimesConv(:);
+            detTimesConv=detTimes+[spkWindow(1):spkWindow(2)]'; 
+            detTimesConv=detTimesConv(:); %this contains detection times plus the interval around them
             
-            %also need an index for grouping later
+            %also need an index for grouping later - this indexes into the
+            %triggering events, with repeating numbers for the same event
             detIdxConv=repmat([1:length(detTimes)],spkWindow(2)-spkWindow(1)+1,1);
             detIdxConv=detIdxConv(:);
             
             %get the other channels
             chList=spikeData(i).channelIds; 
-            chList=chList(2:end); %need to remove center channel
+            chList=chList(2:end); %need to remove center channel - chList only contains the other channels
             
-            %find overlapping events
+            %find overlapping events - events in other channels close to
+            %events in the channel of interest
             tf=ismember(spk.detCh,chList) & ismember(spk.spkTimesDet,detTimesConv);
             
             %only continue if there actually are any
@@ -276,25 +305,55 @@ if isfield(spk,'spkTimesDet')
                 %get their index in the spkTimesDet vector
                 timesIdxCh=timesIdx(tf);
                 
-                %get index of original event to use as grouping par
-                [~,locB]=ismember(spk.spkTimesDet(tf),detTimesConv);
-                idxCh=detIdxConv(locB);
+                %get their channel
+                detCh=spk.detCh(tf);
+
+                %get index of triggering event to use as grouping par
+                [~,locB]=ismember(spk.spkTimesDet(tf),detTimesConv); %need tf here to restrict to events in the right channels
+                idxCh=detIdxConv(locB); %id of trigger event
                 
-                %generate one big array for accumarray
+                %generate one big array for accumarray (enDet is the
+                %channel of interest)
                 enAll=[enDet(unique(idxCh)) enCh]'; %we only want the relevant original spikes
-                idxAll=[unique(idxCh);idxCh];
-                timesIdxAll=[timesIdxDet(unique(idxCh)) timesIdxCh];
+                idxAll=[unique(idxCh);idxCh]; %group by trigger event id
+                timesIdxAll=[timesIdxDet(unique(idxCh)) timesIdxCh]; %indexes into spkTimesDet ultimately
+                detChAll=[repmat(i,1,length(unique(idxCh))) detCh];
                 
                 %get maximum per group
-                maxData=accumarray(idxAll,enAll,[],@max);
+                maxData=accumarray(idxAll,enAll,[],@max); %in maxdata, a group shows up in the row corresponding to its index value
                 
+                %need one loop here to figure out who is generating the
+                %maximum
+                maxCh=zeros(size(maxData));
+                maxTime=zeros(size(maxData));
+                for m=unique(idxCh)' %this only pulls maxima for existing events
+                    mx=find(enAll==maxData(m),1,'first');
+                    maxCh(m)=detChAll(mx);
+                    maxTime(m)=timesIdxAll(mx);
+                end
+
                 %flag which of the overlapping events are not the maximum (i.e.
                 %duplicates)
                 flagD = enAll~=maxData(idxAll);
+
+                %transform maximum data into the correct form
+                maxChD = maxCh(idxAll);
+                maxChD = maxChD(flagD);
+                maxTimeD = maxTime(idxAll);
+                maxTimeD = maxTimeD(flagD);
+
                 
                 %put back into large vector
                 idxD=timesIdxAll(flagD);
-                spk.flagDuplicate(idxD)=1; %set to zero outside loop; so events that get flagged multiple times are still ok
+                spk.flagDuplicate(idxD)=spk.flagDuplicate(idxD)+1; %set to zero outside loop; so events that get flagged multiple times are still ok
+
+                %need to get the right indices  to save maximum time and
+                %channel - matrices will grow in the case that there are
+                %conflicts with multiple events
+                %flagDuplicate serves as counter
+                dupIdx=sub2ind([max(spk.flagDuplicate(idxD)) length(spk.flagDuplicate)],spk.flagDuplicate(idxD),idxD);
+                spk.duplicateMxCh(dupIdx)=maxChD;
+                spk.duplicateMxIdx(dupIdx)=maxTimeD;
             end
         end %if sum
     end %for ch
@@ -344,7 +403,6 @@ end
 
 
 disp(['extractSpikes job ID ' num2str(jobID) ' done.'])
-
 
 
 
