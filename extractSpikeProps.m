@@ -174,6 +174,35 @@ for i=1:id.probes(probeID).nChannels
         %width
         Width=TimeMax-TimeMin;
         
+        %the width above is binned and often too coarse to be useful, so
+        %compute a version based on interpolating the spikes
+%         dInterp=0.01;
+%         WvTmp=griddedInterpolant(squeeze(spikeData(i).Wvfrms));
+%         if size(spikeData(i).Wvfrms,1)>1
+%             WvInterp=WvTmp({[1:Nspikes],[1:dInterp:Nsample+1],[1:Nch]});
+%         else %no interpolation possible across spike dimensions if there is only 1 spike
+%             WvTmp2=WvTmp({[1:dInterp:Nsample+1],[1:Nch]});
+%             WvInterp=[];
+%             WvInterp(1,:,:)=WvTmp2; %need a 3D array for compatibility
+%         end
+% 
+%         Wv1DerI=sign(diff(WvInterp,1,2));
+%         Wv2DerI=diff(Wv1DerI,1,2);
+%         
+%         centerTime=spikeSamples(1)/dInterp+1;
+%         
+%         [minDerI,TimeMinI]=max(Wv2DerI(:,centerTime+spkWindow(1)/dInterp:centerTime+spkWindow(2)/dInterp,:),[],2);
+%         TimeMinI=squeeze(TimeMinI)+centerTime+spkWindow(1)/dInterp; %spikes x channel
+%         TimeMinI(squeeze(minDerI)==0)=centerTime;
+%         
+%         [maxDerI,TimeMaxI]=min(Wv2DerI(:,centerTime+1:end,:),[],2);
+%         TimeMaxI=squeeze(TimeMaxI)+centerTime+1; %spikes x channel
+%         TimeMaxI(squeeze(maxDerI)==0)=Nsample/dInterp+1;
+%         
+%         WidthI=(TimeMaxI-TimeMinI)*dInterp;
+%         if Nspikes==1 
+%             WidthI=WidthI';
+%         end
         
         %compute center of mass using minimum and energy, using the coordinates of the
         %channels
@@ -230,6 +259,9 @@ for i=1:id.probes(probeID).nChannels
         
         spk.WidthAll(spkCount:spkCount+Nspikes-1)=num2cell(Width,2);
         spk.WidthDet(spkCount:spkCount+Nspikes-1)=Width(:,1);
+        
+        %spk.WidthIAll(spkCount:spkCount+Nspikes-1)=num2cell(WidthI,2);
+        %spk.WidthIDet(spkCount:spkCount+Nspikes-1)=WidthI(:,1);
         
         spk.chListAll(spkCount:spkCount+Nspikes-1)=num2cell(chList,2);
         

@@ -1,4 +1,4 @@
-function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUflag,parts,JobID)
+function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUflag,legacyFlag,parts,JobID)
 % extractSpikes computes spike waveforms
 % input parameters:
 % expFolder - experiment folder
@@ -8,7 +8,9 @@ function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUfl
 % probeID - probe number to process (number)
 % name - initials
 % copyToZ - copy id file to Z
-% MU flag - 1 = use MUthresholds rather than thresholds, save as MUspk 
+% MU flag - 1 = use MUthresholds rather than thresholds, save as MUspk
+% legacyflag - implement old (less conservative) way to determine amount of
+% overlap between files
 % parts - number of segments to divide the data file into
 % JobID - current segment to process; starts with 0
 
@@ -28,9 +30,10 @@ function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUfl
 %% global settings
 settings.refrTime=1; %timeout before and after large minima in ms
 settings.refrCross=0.5; %timeout after threshold crossing in ms
-settings.spikeSamples=[15 25]; %number of sample points per spike before and after the minimum, used to be [15 15]
+settings.spikeSamples=[15 15]; %number of sample points per spike before and after the minimum, used to be [15 15]
 settings.spikeRadius=100; %distance radius over which to extract spike waveforms
 settings.offsetSamples=400; %this used to be partsOverlapSamples; overlap between files (increased to avoid filtering artefact)
+
 
 %% generate basic info
 %load threshold and id data
@@ -52,6 +55,9 @@ fileinfo = dir(filename);
 samples = fileinfo.bytes/(2*nChannels); % Number of samples in amplifier data file
 samplesPerJob = ceil(samples/parts); % Number of samples to allocate to each of the 200 jobs
 
+if legacyFlag==1
+    settings.offsetSamples=floor((2/1000)*id.sampleFreq);
+end
 
 
 %% read data
