@@ -14,6 +14,7 @@
    - implements temporal (and optionally spatial) constraints
    - note: run with parfor loop to speed up processing time
    - note: first job should be 0, not 1
+   - note: if you are regenerating files for a previously sorted file, check whether you need to set the legacyFlag to 1 (this determines the amount of overlap between jobs). You can tell whether this needs to be the case by loading a single job file and looking at the settings structure. If it does not contain settings.offsetSamples, or if settings.legacyFlag=1, then you need to set legacyFlag to 1.
    *Output: SpikeFiles\filename_pX_jID_spike.mat; updates to _id.mat file (local and on Z if selected)*
 
 3) extractSpikeProps:
@@ -37,13 +38,9 @@
 
 
 
-## Further processing:
-1) for unsorted (MUA) analysis - mergeSpkInfo (in spkFunctions):
-   - merges the individual spkInfo files into one file for MUA analysis
-   - keeps spktimes, detCh, detChSort in structure spkMerge 
-   *Output: filename_pX_spkMerge.mat*
+## Further processing for sorted spike data:
 
-2) extractTrials (in spkFunctions)
+1) extractTrials (in spkFunctions)
    - needs analyzer git repository in path (needs AnalyzerUtils)
    - extracts trial info from Analyzer: stim condition in each trial
    - extracts events and their timing from digital file
@@ -51,7 +48,7 @@
    - note that eventId=0 corresponds to end of trials only
    *Output: filename_trialInfo.mat*
 
-3) SUTrialData (in spkFunctions)
+2) SUTrialData (in spkFunctions)
    - only uses data for sorted single units
    - note: units marked 'none' or 'noise' are excluded
    - extracts spike times in a window around a selected event
@@ -61,7 +58,41 @@
    *Output: filename_pX_SUTrial.mat* 
 
 
-## Using the new spike sorting pipeline with old data:
+## Processing of multi-unit data
+There are 2 kinds of multi-unit data that can be analyzed:
+- MUthresh: Thresholded but not spike sorted data
+- MUenv: 'Nikos' style analysis using the downsampled, rectified continuous signal
+
+### MUthresh analysis pipeline
+
+1) computeMUThreshold (in MU analysis)
+- computes automated threshold for every channel
+ *Output: filename_MUthreshold.mat and updates to _id.mat file*
+
+2) extractSpikes, extractSpikeProps
+- run usual pipeline of extractSpikes and extractSpikeProps, setting the MUflag to 1 so that it uses the MUthresholding file and generates the right output
+ *Output: SpikeFiles\filename_pX_jID_MUspike.mat, SpikeFiles\filename_pX_jID_MUspkinfo.mat, updates to _id.mat file*
+
+3) mergeMUspkInfo (in MU analysis)
+- merges the separate MUspkinfo jobs, extracting spike times and detection channels for further analysis
+*Output: filename_MUspkMerge.mat*
+
+4) extractTrials (in spkFunctions)
+- see above for SU analysis
+- note: this file only needs to be generated once and then works for SU and MU data
+
+5) MUThreshTrialData (in MU analysis)
+- takes the trialInfo and MUspkMerge data files
+- reorganizes into a structure MUThresh, containing information relative to a specific event for every channel and every trial
+- computes number of spikes and firing rates in baseline, stimulus period and entire trial
+- adds trial info from Analyzer
+*Output: filename_pX_MUThreshTrial.mat* 
+
+
+### MUenv analysis pipeline
+
+
+## Using the new spike sorting pipeline with data sorted using the old pipeline:
 The new spike sorting GUI can be used with data processed with the old spike sorting process by following these steps (all of these files can be found in util):
 1) Make sure a spkSort file has been generated for the old data
 2) Compute the raw (Intan) detection channel:

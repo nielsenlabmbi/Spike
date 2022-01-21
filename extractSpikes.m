@@ -33,7 +33,7 @@ settings.refrCross=0.5; %timeout after threshold crossing in ms
 settings.spikeSamples=[15 25]; %number of sample points per spike before and after the minimum, used to be [15 15]
 settings.spikeRadius=100; %distance radius over which to extract spike waveforms
 settings.offsetSamples=400; %this used to be partsOverlapSamples; overlap between files (increased to avoid filtering artefact)
-
+settings.legacyFlag=legacyFlag; %for bookkeeping
 
 %% generate basic info
 %load threshold and id data

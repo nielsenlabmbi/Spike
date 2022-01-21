@@ -25,6 +25,8 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,
 % - PksAll, PksDet: Max-Min using maximum after minimum
 % - PksBeforeAll, PksBeforeDet: Max-Min using maximum before minimum
 % - WidthAll, WidthDet: Time of max - time of min
+% - WidthIDet: Time of max - time of min, computed based on interpolation
+% of spike waveforms
 % - chListAll: List of channels included
 % - comXMinDet, comZMinDet: center of mass for x and z, based on minimum
 % - comXEnDet,comZEnDet: center of mass for x and z, based on energy
@@ -391,8 +393,7 @@ if isfield(spk,'spkTimesDet')
                 %channel; otherwise a channel in the middle can propagate
                 %events over a much larger distance than intended
                 %previously: flagD = enAll~=maxData(idxAll)
-                %disp(size(enAll))
-                %disp(size(detChAll))
+                
                 flagD = (enAll~=maxData(idxAll) & detChAll==i);
 
                 if sum(flagD)>0
@@ -402,21 +403,9 @@ if isfield(spk,'spkTimesDet')
                     maxChD = maxChD(flagD);
                     maxTimeD = maxTimeD(flagD);
                     
-                    spk.flagDuplicate(idxD)=spk.flagDuplicate(idxD)+1; %set to zero outside loop; so events that get flagged multiple times are still ok
-                    
-                    
-                    %need to get the right indices  to save maximum time and
-                    %channel - matrices will grow in the case that there are
-                    %conflicts with multiple events
-                    %flagDuplicate serves as counter
-                    if max(spk.flagDuplicate(idxD))>size(spk.duplicateMxCh,1) %need to append dimensions so that sub2ind works correctly
-                        spk.duplicateMxCh(max(spk.flagDuplicate(idxD)),:)=0;
-                        spk.duplicateMxIdx(max(spk.flagDuplicate(idxD)),:)=0;
-                    end
-                    dupIdx=sub2ind(size(spk.duplicateMxCh),spk.flagDuplicate(idxD),idxD');
-                    
-                    spk.duplicateMxCh(dupIdx)=maxChD;
-                    spk.duplicateMxIdx(dupIdx)=maxTimeD;
+                    spk.flagDuplicate(idxD)=1; 
+                    spk.duplicateMxCh(idxD)=maxChD;
+                    spk.duplicateMxIdx(idxD)=maxTimeD;
                 end
             end
         end %if sum
@@ -480,7 +469,7 @@ if jobID==0
 end
 
 
-disp(['extractSpikes job ID ' num2str(jobID) ' done.'])
+disp(['extractSpikeProps job ID ' num2str(jobID) ' done.'])
 
 
 

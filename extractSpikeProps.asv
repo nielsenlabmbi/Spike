@@ -25,6 +25,8 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,
 % - PksAll, PksDet: Max-Min using maximum after minimum
 % - PksBeforeAll, PksBeforeDet: Max-Min using maximum before minimum
 % - WidthAll, WidthDet: Time of max - time of min
+% - WidthIDet: Time of max - time of min, computed based on interpolation
+% of spike waveforms
 % - chListAll: List of channels included
 % - comXMinDet, comZMinDet: center of mass for x and z, based on minimum
 % - comXEnDet,comZEnDet: center of mass for x and z, based on energy
@@ -58,7 +60,7 @@ nChannels=sum([id.probes.nChannels]);
 spkWindow=[-4 6]; %determines over how many datapoints we're looking for the minimum
 spkTol=5; %window over which threshold crossings are considered duplicates/artefacts
 spkInterp=0.1; %interpolation factor for width calculation
-spkWindowI=[-15 15]; %window in which to find minimum in interpolated data
+spkWindowI=[-15 15]; %window in which to find minimum in interpolated data (scaling up spkWindow ends up too large)
 
 %open matfile with spike data
 %generates spikeData and settings
@@ -178,26 +180,41 @@ for i=1:id.probes(probeID).nChannels
         %the width above is binned and often too coarse to be useful, so
         %compute a version based on interpolating the spikes (detection
         %channel only)
-               WvInterp=zeros(Nspikes,Nsample/dInterp+1);
+        %we will search around the minimum/maximum detected for the
+        %non-interpolated data to avoid artefacts caused by the
+        %interpolation; since that window is different for every spike and
+        %interpolation requires loop, just keep as loop
+        TimeMinI=zeros(1,Nspikes);
+        TimeMaxI=zeros(1,Nspikes);
         for s=1:Nspikes
             WvTmp=griddedInterpolant(squeeze(spikeData(i).Wvfrms(s,:,1)),'cubic');
-            WvInterp(s,:)=WvTmp([1:dInterp:Nsample+1]);
+            WvInterp=WvTmp([1:spkInterp:Nsample+1]);
+
+            Wv1DerI=sign(diff(WvInterp));
+            Wv2DerI=diff(Wv1DerI);
+
+            %min
+            minTime=(TimeMin(s,1)-1)/spkInterp+1;
+            [minDerI,TMinI]=max(Wv2DerI(minTime+spkWindowI(1):minTime+spkWindowI(2)));
+            TimeMinI(s)=squeeze(TMinI)+minTime+spkWindowI(1); 
+            if minDerI==0
+                TimeMinI(s)=minTime;
+            end
+
+            %max
+            maxTime=(TimeMax(s,1)-1)/spkInterp+1;
+            if TimeMax(s,1)<Nsample
+                [maxDerI,TMaxI]=min(Wv2DerI(maxTime+spkWindowI(1):maxTime+spkWindowI(2)));
+            else
+                [maxDerI,TMaxI]=min(Wv2DerI(maxTime+spkWindowI(1):end));
+            end
+            TimeMaxI(s)=squeeze(TMaxI)+maxTime+spkWindowI(1); %spikes
+            if maxDerI==0
+                TimeMaxI(s)=maxTime;
+            end
         end
 
-        Wv1DerI=sign(diff(WvInterp,1,2));
-        Wv2DerI=diff(Wv1DerI,1,2);
-        
-        centerTime=spikeSamples(1)/dInterp+1;
-        
-        [minDerI,TimeMinI]=max(Wv2DerI(:,centerTime+spkWindow(1)/dInterp:centerTime+spkWindow(2)/dInterp),[],2);
-        TimeMinI=squeeze(TimeMinI)+centerTime+spkWindow(1)/dInterp; %spikes
-        TimeMinI(squeeze(minDerI)==0)=centerTime;
-        
-        [maxDerI,TimeMaxI]=min(Wv2DerI(:,centerTime+1:end),[],2);
-        TimeMaxI=squeeze(TimeMaxI)+centerTime+1; %spikes
-        TimeMaxI(squeeze(maxDerI)==0)=Nsample/dInterp+1;
-        
-        WidthI=(TimeMaxI-TimeMinI)*dInterp;
+        WidthI=(TimeMaxI-TimeMinI)*spkInterp;
         if Nspikes==1 
             WidthI=WidthI';
         end
@@ -376,8 +393,7 @@ if isfield(spk,'spkTimesDet')
                 %channel; otherwise a channel in the middle can propagate
                 %events over a much larger distance than intended
                 %previously: flagD = enAll~=maxData(idxAll)
-                %disp(size(enAll))
-                %disp(size(detChAll))
+                
                 flagD = (enAll~=maxData(idxAll) & detChAll==i);
 
                 if sum(flagD)>0
@@ -387,13 +403,9 @@ if isfield(spk,'spkTimesDet')
                     maxChD = maxChD(flagD);
                     maxTimeD = maxTimeD(flagD);
                     
-                    spk.flagDuplicate(idxD)=spk.flagDuplicate(idxD)+1; %set to zero outside loop; so events that get flagged multiple times are still ok
+                    spk.flagDuplicate(idxD)=1; 
                     
-                    
-                    %need to get the right indices  to save maximum time and
-                    %channel - matrices will grow in the case that there are
-                    %conflicts with multiple events
-                    %flagDuplicate serves as counter
+     
                     if max(spk.flagDuplicate(idxD))>size(spk.duplicateMxCh,1) %need to append dimensions so that sub2ind works correctly
                         spk.duplicateMxCh(max(spk.flagDuplicate(idxD)),:)=0;
                         spk.duplicateMxIdx(max(spk.flagDuplicate(idxD)),:)=0;

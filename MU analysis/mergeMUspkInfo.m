@@ -1,8 +1,6 @@
 function mergeMUspkInfo(filepath,animalID,unitID,expID,probeID,startID,stopID)
 
 %this function merges all MU spike files into one file for further analysis
-%output structure contains spiketimes and channel info as well as
-%info on cooccuring spikes
 %
 %input:
 %filepath: path to the animal folder (e.g.., Z:\EphysNew\Data)
@@ -12,6 +10,19 @@ function mergeMUspkInfo(filepath,animalID,unitID,expID,probeID,startID,stopID)
 %probeID: probe id
 %startID: start job ID
 %stopID: stop job ID
+%
+%output:
+%MUspkMerge structure with fields
+%spktimes: spike times
+%detCh: detection channel for each spike
+%detChSort: detection channels reorganized according to z position
+%(bottom of probe is channel 1 in this organization)
+%flagDuplicate: 1 - spike is duplicate of spike on other channel
+%duplicateMxCh: channel of the spike considered the original
+%duplicateMxIdx: event index (job file specific) of the spike considered
+%the original
+%NDuplicate: number of cooccuring spike along the entire probe
+%jobId: job file a spike is stored in
 
 wb=waitbar(0,'Merging MUspkinfo');
 
