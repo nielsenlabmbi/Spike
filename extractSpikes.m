@@ -30,7 +30,7 @@ function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUfl
 %% global settings
 settings.refrTime=1; %timeout before and after large minima in ms
 settings.refrCross=0.5; %timeout after threshold crossing in ms
-settings.spikeSamples=[15 15]; %number of sample points per spike before and after the minimum, used to be [15 15]
+settings.spikeSamples=[15 25]; %number of sample points per spike before and after the minimum, used to be [15 15]
 settings.spikeRadius=100; %distance radius over which to extract spike waveforms
 settings.offsetSamples=400; %this used to be partsOverlapSamples; overlap between files (increased to avoid filtering artefact)
 
@@ -57,6 +57,9 @@ samplesPerJob = ceil(samples/parts); % Number of samples to allocate to each of 
 
 if legacyFlag==1
     settings.offsetSamples=floor((2/1000)*id.sampleFreq);
+    %need to adjust the spikeSamples so that they are not in conflict with
+    %the shorter window
+    settings.spikeSamples(settings.spikeSamples>floor(settings.offsetSamples/2))=floor(settings.offsetSamples/2);
 end
 
 
@@ -75,6 +78,8 @@ if JobID == parts-1 % The last job - first JobID is 0
 else
     Data = fread(DataFile, [nChannels samplesPerJob], 'int16'); % If JobID isn't the last job, read samplesPerJob samples past the file position set by fseek
 end
+
+fclose(DataFile);
 
 %extract only data for the relevant channels (only necessary if there are 2
 %probes)
@@ -224,7 +229,7 @@ for i=1:size(Data,2)
         Nspikes=length(Times);
         %continue only if there are spikes
         if Nspikes>0
-            
+           
             %extract waveforms - we are ignoring the shank here, since shanks might
             %be close enough to pick up the same waveforms
             %the number of channels in this radius will be variable across
@@ -237,7 +242,7 @@ for i=1:size(Data,2)
             [distOrg,distIdx]=sort(distCh);
             spikeData.channelIds=distIdx(distOrg<=settings.spikeRadius); %add offset back to get to correct channels
             Nch=length(spikeData.channelIds);
-            
+
             wv=Data([-settings.spikeSamples(1):settings.spikeSamples(2)]+Times,spikeData.channelIds);
             
             Ntime=sum(settings.spikeSamples)+1;
@@ -276,30 +281,50 @@ if JobID==0
     edgeSample=startSample+settings.offsetSamples/2; %boundaries between samples
     edgeSample(end+1)=samples; %to finish the last bin
 
-    %need to clean up previous versions that didn't index according to
-    %probe
-    if ~iscell(id.extractSpikes.date)
-        id.extractSpikes=rmfield(id.extractSpikes,'date');
-    end
-    if ~iscell(id.extractSpikes.name)
-        id.extractSpikes=rmfield(id.extractSpikes,'name');
-    end
+  
 
 
     if MUflag==0
+        %need to clean up previous versions that didn't index according to
+        %probe
+        if isfield(id,'extractSpikes')
+            if ~iscell(id.extractSpikes.date) %name, date, extractSpikes go together, so only do this once
+                %if there is only one probe, or only one probe has ever been thresholded
+                %simply delete since it's now obsolete
+                if length(id.probes)==1 || sum(id.threshold.processedProbe)==1
+                    id=rmfield(id,'extractSpikes');
+                else %try to keep information, using date info
+                    t1=datetime([id.threshold.date]);
+                    t2=datetime(id.extractSpikes.date);
+                    [~,oldProbe]=min(t2-t1); %only returns 1 value
+
+                    tmpId=id.extractSpikes;
+                    id=rmfield(id,'extractSpikes');
+
+                    id.extractSpikes.date{oldProbe}=tmpId.date;
+                    id.extractSpikes.name{oldProbe}=tmpId.name;
+                    id.extractSpikes.jobStart{oldProbe}=tmpId.jobStart;
+                    id.extractSpikes.jobStop{oldProbe}=tmpId.jobStop;
+                    id.extractSpikes.jobEdges{oldProbe}=tmpId.jobEdges;
+                end
+            end
+        end
+
         id.extractSpikes.date{probeID}=date;
         id.extractSpikes.name{probeID}=name;
 
-        id.extractSpikes.jobStart=startSample;
-        id.extractSpikes.jobStop=stopSample;
-        id.extractSpikes.jobEdges=edgeSample;
+        id.extractSpikes.jobStart{probeID}=startSample;
+        id.extractSpikes.jobStop{probeID}=stopSample;
+        id.extractSpikes.jobEdges{probeID}=edgeSample;
+
+        id.extractSpikes.legacyFlag(probeID)=legacyFlag;
     else
         id.MUextractSpikes.date{probeID}=date;
         id.MUextractSpikes.name{probeID}=name;
 
-        id.MUextractSpikes.jobStart=startSample;
-        id.MUextractSpikes.jobStop=stopSample;
-        id.MUextractSpikes.jobEdges=edgeSample;
+        id.MUextractSpikes.jobStart{probeID}=startSample;
+        id.MUextractSpikes.jobStop{probeID}=stopSample;
+        id.MUextractSpikes.jobEdges{probeID}=edgeSample;
     end
     
     save(fullfile(expFolder,animalID,expname,[expname '_id.mat']),'id'); 

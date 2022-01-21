@@ -57,7 +57,8 @@ nChannels=sum([id.probes.nChannels]);
 %parameter choices
 spkWindow=[-4 6]; %determines over how many datapoints we're looking for the minimum
 spkTol=5; %window over which threshold crossings are considered duplicates/artefacts
-
+spkInterp=0.1; %interpolation factor for width calculation
+spkWindowI=[-15 15]; %window in which to find minimum in interpolated data (scaling up spkWindow ends up too large)
 
 %open matfile with spike data
 %generates spikeData and settings
@@ -175,34 +176,46 @@ for i=1:id.probes(probeID).nChannels
         Width=TimeMax-TimeMin;
         
         %the width above is binned and often too coarse to be useful, so
-        %compute a version based on interpolating the spikes
-%         dInterp=0.01;
-%         WvTmp=griddedInterpolant(squeeze(spikeData(i).Wvfrms));
-%         if size(spikeData(i).Wvfrms,1)>1
-%             WvInterp=WvTmp({[1:Nspikes],[1:dInterp:Nsample+1],[1:Nch]});
-%         else %no interpolation possible across spike dimensions if there is only 1 spike
-%             WvTmp2=WvTmp({[1:dInterp:Nsample+1],[1:Nch]});
-%             WvInterp=[];
-%             WvInterp(1,:,:)=WvTmp2; %need a 3D array for compatibility
-%         end
-% 
-%         Wv1DerI=sign(diff(WvInterp,1,2));
-%         Wv2DerI=diff(Wv1DerI,1,2);
-%         
-%         centerTime=spikeSamples(1)/dInterp+1;
-%         
-%         [minDerI,TimeMinI]=max(Wv2DerI(:,centerTime+spkWindow(1)/dInterp:centerTime+spkWindow(2)/dInterp,:),[],2);
-%         TimeMinI=squeeze(TimeMinI)+centerTime+spkWindow(1)/dInterp; %spikes x channel
-%         TimeMinI(squeeze(minDerI)==0)=centerTime;
-%         
-%         [maxDerI,TimeMaxI]=min(Wv2DerI(:,centerTime+1:end,:),[],2);
-%         TimeMaxI=squeeze(TimeMaxI)+centerTime+1; %spikes x channel
-%         TimeMaxI(squeeze(maxDerI)==0)=Nsample/dInterp+1;
-%         
-%         WidthI=(TimeMaxI-TimeMinI)*dInterp;
-%         if Nspikes==1 
-%             WidthI=WidthI';
-%         end
+        %compute a version based on interpolating the spikes (detection
+        %channel only)
+        %we will search around the minimum/maximum detected for the
+        %non-interpolated data to avoid artefacts caused by the
+        %interpolation; since that window is different for every spike and
+        %interpolation requires loop, just keep as loop
+        TimeMinI=zeros(1,Nspikes);
+        TimeMaxI=zeros(1,Nspikes);
+        for s=1:Nspikes
+            WvTmp=griddedInterpolant(squeeze(spikeData(i).Wvfrms(s,:,1)),'cubic');
+            WvInterp=WvTmp([1:spkInterp:Nsample+1]);
+
+            Wv1DerI=sign(diff(WvInterp));
+            Wv2DerI=diff(Wv1DerI);
+
+            %min
+            minTime=(TimeMin(s,1)-1)/spkInterp+1;
+            [minDerI,TMinI]=max(Wv2DerI(minTime+spkWindowI(1):minTime+spkWindowI(2)));
+            TimeMinI(s)=squeeze(TMinI)+minTime+spkWindowI(1); 
+            if minDerI==0
+                TimeMinI(s)=minTime;
+            end
+
+            %max
+            maxTime=(TimeMax(s,1)-1)/spkInterp+1;
+            if TimeMax(s,1)<Nsample
+                [maxDerI,TMaxI]=min(Wv2DerI(maxTime+spkWindowI(1):maxTime+spkWindowI(2)));
+            else
+                [maxDerI,TMaxI]=min(Wv2DerI(maxTime+spkWindowI(1):end));
+            end
+            TimeMaxI(s)=squeeze(TMaxI)+maxTime+spkWindowI(1); %spikes
+            if maxDerI==0
+                TimeMaxI(s)=maxTime;
+            end
+        end
+
+        WidthI=(TimeMaxI-TimeMinI)*spkInterp;
+        if Nspikes==1 
+            WidthI=WidthI';
+        end
         
         %compute center of mass using minimum and energy, using the coordinates of the
         %channels
@@ -260,8 +273,7 @@ for i=1:id.probes(probeID).nChannels
         spk.WidthAll(spkCount:spkCount+Nspikes-1)=num2cell(Width,2);
         spk.WidthDet(spkCount:spkCount+Nspikes-1)=Width(:,1);
         
-        %spk.WidthIAll(spkCount:spkCount+Nspikes-1)=num2cell(WidthI,2);
-        %spk.WidthIDet(spkCount:spkCount+Nspikes-1)=WidthI(:,1);
+        spk.WidthIDet(spkCount:spkCount+Nspikes-1)=WidthI;
         
         spk.chListAll(spkCount:spkCount+Nspikes-1)=num2cell(chList,2);
         
@@ -410,9 +422,13 @@ if isfield(spk,'spkTimesDet')
         end %if sum
     end %for ch
 end
-%add expname just in case
+%add expname just in case, add other parameters
 spk.expname=expname;
 spk.probeId=probeID;
+spk.spkWindow=spkWindow;
+spk.spkTol=spkTol; 
+spk.spkInterp=spkInterp; 
+spk.spkWindowI=spkWindowI; 
 
 if MUflag==0
     outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkinfo']);
@@ -429,12 +445,27 @@ if jobID==0
     if MUflag==0
         %need to clean up previous versions that didn't index according to
         %probe
-        if ~iscell(id.extractSpikeProps.date)
-            id.extractSpikeProps=rmfield(id.extractSpikeProps,'date');
+        if isfield(id,'extractSpikeProps')
+             if ~iscell(id.extractSpikeProps.date) %name, date go together, so only do this once
+                 %if there is only one probe, or only one probe has ever been thresholded
+                %simply delete since it's now obsolete
+                if length(id.probes)==1 || sum(id.threshold.processedProbe)==1
+                    id=rmfield(id,'extractSpikeProps');
+                else %try to keep information, using date info
+                    t1=datetime([id.threshold.date]);
+                    t2=datetime(id.extractSpikeProps.date);
+                    [~,oldProbe]=min(t2-t1); %only returns 1 value
+
+                    tmpId=id.extractSpikeProps;
+                    id=rmfield(id,'extractSpikeProps');
+
+                    id.extractSpikeProps.date{oldProbe}=tmpId.date;
+                    id.extractSpikeProps.name{oldProbe}=tmpId.name;
+                end
+       
+            end
         end
-        if ~iscell(id.extractSpikeProps.name)
-            id.extractSpikeProps=rmfield(id.extractSpikeProps,'name');
-        end
+
         id.extractSpikeProps.name{probeID}=name;
         id.extractSpikeProps.date{probeID}=date;
     else
