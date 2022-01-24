@@ -58,6 +58,7 @@ for s=1:3
     chthresh(s,:) = squeeze(round(1.4826 * median(abs(Data - median(Data,1)),1)));
 end
 MUthresholding.thresholds=-threshlevel*mean(chthresh,1);
+MUthresholding.threshlevel=threshlevel;
 
 save([basename '_p' num2str(probeID) '_MUthresh.mat'],'MUthresholding');
 
