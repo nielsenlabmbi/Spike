@@ -16,7 +16,7 @@ function MUEnvTrialData(physpath,animal,unit,exp,probeID,eventType,eId,baseTime,
 %MUEnv: matrix with dimensions time x channel x event
 %zMUEnv: z transformed MUEnv, using mean and standard deviation from
 %baseline period
-%MUEnvInfo: parameters for MU computation
+%MUEnvInfo
 
 basename=fullfile(physpath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '_' exp]);
 

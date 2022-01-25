@@ -57,13 +57,19 @@
    - adds trial info from Analyzer (copy from trialInfo structure) 
    *Output: filename_pX_SUTrial.mat* 
 
+3) computePSTH (in spkFunctions)
+   - compute PSTH for a unit
+   - uses the data computed from SUTrialData 
+   - note: the same funciton can be used for MUThresh data as well by supplying the data for a channel rather than a single unit (as provided by MUTrialData)
+
 
 ## Processing of multi-unit data
 There are 2 kinds of multi-unit data that can be analyzed:
-- MUthresh: Thresholded but not spike sorted data
-- MUenv: 'Nikos' style analysis using the downsampled, rectified continuous signal
+- MUThresh: Thresholded but not spike sorted data
+- MUEnv: 'Nikos' style analysis using the downsampled, rectified continuous signal
+Lastly, MURaw will refer to the underlying original multi-unit signal (the bandpass filtered signal from every channel that is used to compute the other 2 MU signals).
 
-### MUthresh analysis pipeline
+### MUThresh analysis pipeline
 
 1) computeMUThreshold (in MU analysis)
 - computes automated threshold for every channel
@@ -89,7 +95,20 @@ There are 2 kinds of multi-unit data that can be analyzed:
 *Output: filename_pX_MUThreshTrial.mat* 
 
 
-### MUenv analysis pipeline
+### MUEnv analysis pipeline
+
+1) MUEnvTrialData (in MU analysis)
+   - processes data for all channels, in a time window around a selected event
+   - output is the rectified and downsampled signal for every channel for each event
+   - also computes z transform of the signal
+*Output: filename_pX_MUEnvTrial.mat* 
+
+### MURaw analysis pipeline
+1) MURawTrialData (in MU analysis)
+   - processes data for single channel only
+   - extracts the filtered data for that channel in a time window around a selected event
+   - note: channel number provided as input refers to the original recording channel
+*Output: filename__cCh_pX_MURawTrial.mat* 
 
 
 ## Using the new spike sorting pipeline with data sorted using the old pipeline:
