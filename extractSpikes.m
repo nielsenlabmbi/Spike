@@ -288,7 +288,7 @@ if JobID==0
         %need to clean up previous versions that didn't index according to
         %probe
         if isfield(id,'extractSpikes')
-            if ~iscell(id.extractSpikes.date) %name, date, extractSpikes go together, so only do this once
+            if ~iscell(id.extractSpikes.jobStart) %name, date, extractSpikes go together, so only do this once
                 %if there is only one probe, or only one probe has ever been thresholded
                 %simply delete since it's now obsolete
                 if length(id.probes)==1 || sum(id.threshold.processedProbe)==1
