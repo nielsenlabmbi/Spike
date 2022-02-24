@@ -60,7 +60,7 @@ nChannels=sum([id.probes.nChannels]);
 spkWindow=[-4 6]; %determines over how many datapoints we're looking for the minimum
 spkTol=5; %window over which threshold crossings are considered duplicates/artefacts
 spkInterp=0.1; %interpolation factor for width calculation
-spkWindowI=[-15 15]; %window in which to find minimum in interpolated data (scaling up spkWindow ends up too large)
+spkWindowI=15; %window in which to find minimum in interpolated data (scaling up spkWindow ends up too large)
 
 %open matfile with spike data
 %generates spikeData and settings
@@ -100,125 +100,99 @@ for i=1:id.probes(probeID).nChannels
             En=En';
         end
         
+     
         %compute minimum and maximum
-        %we will base these on the derivative - we want a minimum
-        %that is the local minimum around the minimum time at the
-        %detection channel (for which the minimum will be at
-        %spikeSamples(1)+1), and a maximum that is the first maximum
-        %after the positive going part of the waveform
-        %both are more correctly detected based on the slope rather
-        %than using min/max over a set interval
-        %we can't use the minimum at the detection time point
-        %because the minimum occurs at different time points on
-        %different channels
-        
-        %sign of slope
-        Wv1Der=sign(diff(spikeData(i).Wvfrms,1,2));
-        
-        %2nd derivative of the sign
-        Wv2Der=diff(Wv1Der,1,2);
-        
-        %minimum: maximum in 2nd derivative around  spikeSamples+1
-        %using +-5 data points for now
-        [minDer,TimeMin]=max(Wv2Der(:,spikeSamples(1)+spkWindow(1):spikeSamples(1)+spkWindow(2),:),[],2);
-        
-        %because of how diff works, max of derivative is one ahead of true min, also
-        %add time offset relative to original waveform
-        TimeMin=squeeze(TimeMin)+spikeSamples(1)+spkWindow(1); %spikes x channel
-        
-        %if there is no local minimum, use the minimum of the
-        %detection channel
-        TimeMin(squeeze(minDer)==0)=spikeSamples(1)+1;
-        
-        %now get minimum values
-        %need to turn TimeMin into the correct index first
-        spkIdx=repmat([1:Nspikes]',1,Nch);
-        chIdx=repmat([1:Nch],Nspikes,1);
-        if Nspikes==1 %need to flip the time vector in this case
-            TimeMin=TimeMin';
-        end
-        mxIdx=sub2ind([Nspikes Nsample Nch],spkIdx,TimeMin,chIdx);
-        AmpMin=spikeData(i).Wvfrms(mxIdx); %spikes x channels
-        
-        
-        %do the same for the maximum (minimum in 2nd derivative)
-        %searching after occurence of the minimum for detection
-        %channel
-        %min automatically returns the index to the first occurence if
-        %the minimum occurs more than once
-        [maxDer,TimeMax]=min(Wv2Der(:,spikeSamples(1)+1:end,:),[],2);
-        TimeMax=squeeze(TimeMax)+spikeSamples(1)+1; %spikes x channel
-        %if there is no maximum (peak cut off), then set maximum to end of
-        %window
-        TimeMax(squeeze(maxDer)==0)=Nsample;
-        
-        
-        %maximum before the peak (minimum in 2nd derivative)
-        %min automatically returns the index to the first occurence if
-        %the minimum occurs more than once
-        [maxDerB,TimeMaxB]=min(Wv2Der(:,1:spikeSamples(1)-1,:),[],2);
-        TimeMaxB=squeeze(TimeMaxB)+1; %spikes x channel
-        TimeMaxB(squeeze(maxDerB)==0)=1;
-        
-        %now get maximum values
-        if Nspikes==1 %need to flip the time vector in this case
-            TimeMax=TimeMax';
-            TimeMaxB=TimeMaxB';
-        end
-        mxIdx=sub2ind([Nspikes Nsample Nch],spkIdx,TimeMax,chIdx);
-        AmpMax=spikeData(i).Wvfrms(mxIdx);
-        mxIdxB=sub2ind([Nspikes Nsample Nch],spkIdx,TimeMaxB,chIdx);
-        AmpMaxB=spikeData(i).Wvfrms(mxIdxB);
+        TimeMin=zeros(Nspikes,Nch);
+        AmpMin=zeros(Nspikes,Nch);
+        TimeMax=zeros(Nspikes,Nch);
+        AmpMax=zeros(Nspikes,Nch);
+        TimeMaxB=zeros(Nspikes,Nch);
+        AmpMaxB=zeros(Nspikes,Nch);
+        WidthI=zeros(1,Nspikes);
 
+        for s=1:Nspikes
+            for c=1:Nch
+                %find local minima in window around detection timepoint
+                %organization of Wvfrms is spikes x times x channel
+                tf=islocalmin(spikeData(i).Wvfrms(s,spikeSamples(1)+spkWindow(1):spikeSamples(1)+spkWindow(2),c),2,'FlatSelection','first');
+                %to catch case without local min - set to detection event
+                if sum(tf)==0
+                    tf(abs(spkWindow(1))+2)=1; %spikeSamples(1) is 1 to the left of the minimum
+                end
+                %convert to indices into full time vector
+                minIdx=find(tf==1)+spikeSamples(1)+spkWindow(1)-1;
+                %find the one closest to the detection timepoint
+                [~,minIdx2]=min(abs(minIdx-spikeSamples(1)-1));
+                TimeMin(s,c)=minIdx(minIdx2);
+                AmpMin(s,c)=spikeData(i).Wvfrms(s,TimeMin(s,c),c); %spikes x channels
+            
+                
+                %find maxima - before and after
+                tf=islocalmax(spikeData(i).Wvfrms(s,:,c),2,'FlatSelection','first');
+                maxIdx=find(tf==1);
+
+                %maximum before (last value of the ones that are smaller
+                %than the detection time point)
+                maxIdxB=find(maxIdx<spikeSamples(1)+1,1,'last');
+                if ~isempty(maxIdxB)
+                    TimeMaxB(s,c)=maxIdx(maxIdxB);
+                else
+                    TimeMaxB(s,c)=1;
+                end
+
+                %similar for after
+                maxIdxA=find(maxIdx>spikeSamples(1)+1,1,'first');        
+                if ~isempty(maxIdxA)
+                    TimeMax(s,c)=maxIdx(maxIdxA);
+                else
+                    TimeMax(s,c)=Nsample;
+                end
+                
+                AmpMax(s,c)=spikeData(i).Wvfrms(s,TimeMax(s,c),c);
+                AmpMaxB(s,c)=spikeData(i).Wvfrms(s,TimeMaxB(s,c),c);
+            end %for channel
+
+            %compute width based on interpolating the spikes (detection
+            %channel only)
+            WvTmp=griddedInterpolant(squeeze(spikeData(i).Wvfrms(s,:,1)),'cubic');
+            WvInterp=WvTmp([1:spkInterp:Nsample+1]);
+
+            %minimum - search around the location of the minimum in the
+            %non-interpolated version to avoid mismatches because of the
+            %interpolation
+            tf=islocalmin(WvInterp,'FlatSelection','first');
+            minIdx=find(tf==1);
+            TimeMinOrig=(TimeMin(s,1)-1)/spkInterp+1;
+            [minVal,minIdx2]=min(abs(minIdx-TimeMinOrig));
+            if isempty(minVal) || minVal>spkWindowI
+                TimeMinI=TimeMinOrig;
+            else
+                TimeMinI=minIdx(minIdx2);
+            end
+
+            %maximum - again around the timepoint of the maximum detected
+            %without interpolation
+            tf=islocalmax(WvInterp,'FlatSelection','first');
+            maxIdx=find(tf==1);
+            TimeMaxOrig=(TimeMax(s,1)-1)/spkInterp+1;
+            [maxVal,maxIdx2]=min(abs(maxIdx-TimeMaxOrig));
+            if isempty(maxVal) || maxVal>spkWindowI
+                TimeMaxI=TimeMaxOrig;
+            else
+                TimeMaxI=maxIdx(maxIdx2);
+            end
+
+            WidthI(s)=(TimeMaxI-TimeMinI)*spkInterp;
+
+        end %for spikes
+            
         %peak to peak value
         Pks = AmpMax-AmpMin;
         PksB = AmpMaxB-AmpMin;
         
         %width
         Width=TimeMax-TimeMin;
-        
-        %the width above is binned and often too coarse to be useful, so
-        %compute a version based on interpolating the spikes (detection
-        %channel only)
-        %we will search around the minimum/maximum detected for the
-        %non-interpolated data to avoid artefacts caused by the
-        %interpolation; since that window is different for every spike and
-        %interpolation requires loop, just keep as loop
-        TimeMinI=zeros(1,Nspikes);
-        TimeMaxI=zeros(1,Nspikes);
-        for s=1:Nspikes
-            WvTmp=griddedInterpolant(squeeze(spikeData(i).Wvfrms(s,:,1)),'cubic');
-            WvInterp=WvTmp([1:spkInterp:Nsample+1]);
 
-            Wv1DerI=sign(diff(WvInterp));
-            Wv2DerI=diff(Wv1DerI);
-
-            %min
-            minTime=(TimeMin(s,1)-1)/spkInterp+1;
-            [minDerI,TMinI]=max(Wv2DerI(minTime+spkWindowI(1):minTime+spkWindowI(2)));
-            TimeMinI(s)=squeeze(TMinI)+minTime+spkWindowI(1); 
-            if minDerI==0
-                TimeMinI(s)=minTime;
-            end
-
-            %max
-            maxTime=(TimeMax(s,1)-1)/spkInterp+1;
-            if TimeMax(s,1)<Nsample
-                [maxDerI,TMaxI]=min(Wv2DerI(maxTime+spkWindowI(1):maxTime+spkWindowI(2)));
-            else
-                [maxDerI,TMaxI]=min(Wv2DerI(maxTime+spkWindowI(1):end));
-            end
-            TimeMaxI(s)=squeeze(TMaxI)+maxTime+spkWindowI(1); %spikes
-            if maxDerI==0
-                TimeMaxI(s)=maxTime;
-            end
-        end
-
-        WidthI=(TimeMaxI-TimeMinI)*spkInterp;
-        if Nspikes==1 
-            WidthI=WidthI';
-        end
-        
         %compute center of mass using minimum and energy, using the coordinates of the
         %channels
         %make sure to account for bad channels that are set to NaN
