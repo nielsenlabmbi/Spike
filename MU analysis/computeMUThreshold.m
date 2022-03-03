@@ -1,5 +1,18 @@
 function computeMUThreshold(physpath,animal,unit,exp,probeID,threshlength,threshlevel,name,copyToZ)
 %compute the threshold for automatic MU extraction, save in separate file
+%input:
+% expFolder - experiment folder
+% animalID - animal ID (string)
+% unitID - unit ID (string)
+% expID - experiment ID (string)
+% probeID - probe number to process (number)
+% threshlength - length of intervals used for threshold computations (in
+% sec)
+% threshlevel - scale factor for threshold (thresholds will be set to
+% -threshlevel x automatically determined level)
+% name - initials
+% copyToZ - copy id file to Z
+
 
 
 %construct file name
@@ -60,7 +73,7 @@ end
 MUthresholding.thresholds=-threshlevel*mean(chthresh,1);
 MUthresholding.threshlevel=threshlevel;
 
-save([basename '_p' num2str(probeID) '_MUthresh.mat'],'MUthresholding');
+save([basename '_p' num2str(probeID) '_MUthreshold.mat'],'MUthresholding');
 
 %documentation
 id.MUthreshold.date{probeID}=date;
