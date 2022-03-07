@@ -9,7 +9,8 @@ function [psth,binVec]=computePSTH(data,baseTime,stimTime,binWidth)
 %binWidth: width of PSTH bin in ms
 %
 %output:
-%psth: psth for the unit/channel, in spikes/s
+%psth: psth for the unit/channel, in spikes/s, average firing rate across
+%trials
 %binVec: vector with bin edges
 %you can plot the results using
 %histogram('BinEdges',binVec,'BinCounts',psth)
@@ -27,4 +28,4 @@ for i=1:length(data)
 end
 N=N./(binWidth/1000);
 
-psth=sum(N,1);
+psth=mean(N,1);
