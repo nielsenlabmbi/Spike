@@ -46,8 +46,25 @@ for i=1:length(fileList)
         spikesIn=load(fullfile(FilePathIn,FileIn,'SpkFile',fileList{i}));
         load(idname);
         
-        %we get unit id from idk
-        spkSort.unitid=spikesIn.idk;
+        %figure out number of units
+        uidx=unique(spikesIn.idk);
+        uidx=uidx(uidx~=0); %0 are the unsorted spikes
+        
+        %we get unit id from idk 
+        if ~isempty(uidx) %standard case
+            spkSort.unitid=spikesIn.idk;
+        else
+            if isfield(spikesIn,'Spikes') && isfield(spikesIn.Spikes{1},'Unit')
+                spkSort.unitid=spikesIn.Spikes{1}.Unit;
+                uidx=unique(spkSort.unitid);
+                uidx=uidx(uidx~=0); %0 are the unsorted spikes
+            else
+                %just add 1 to all of the units
+                spkSort.unitid=spikesIn.idk+1;
+                uidx=unique(spkSort.unitid);
+                uidx=uidx(uidx~=0); %0 are the unsorted spikes
+            end
+        end
         
         %spike times are in properties
         spkSort.spktimes=spikesIn.Properties(15,:);
@@ -59,10 +76,7 @@ for i=1:length(fileList)
         
         %unit info - ignoring first (unsorted) unit
         minISIsample=round(minISI*id.sampleFreq);
-        
-        uidx=unique(spikesIn.idk);
-        uidx=uidx(uidx~=0); %0 are the unsorted spikes
-        
+
         spkSort.unitinfo=cell(length(uidx),1);
         for u=1:length(uidx)
             %replicating Augusto's usual classification
@@ -87,7 +101,7 @@ for i=1:length(fileList)
         %determine whether this should be saved at all - will drop files
         %that only have MU
         saveFlag=1;
-        if all(strcmp(spkSort.unitinfo{1},'MU'))
+        if all(strcmp(spkSort.unitinfo,'MU'))
             saveFlag=0;
         end
             
@@ -190,7 +204,7 @@ for i=1:length(fileList)
         
         %determine whether this should be saved at all
         saveFlag=1;
-        if all(strcmp(spkSort.unitinfo{1},'MU'))
+        if all(strcmp(spkSort.unitinfo,'MU'))
             saveFlag=0;
         end
         
