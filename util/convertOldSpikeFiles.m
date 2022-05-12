@@ -231,7 +231,7 @@ for i=1:length(fileList)
         spkSort.info.expname=outname(1:idx-1);
         
         %add other general info
-        spkSort.info.name='AL';
+        spkSort.info.name=id.threshold.name;
         spkSort.info.probeid=probeId;
         spkSort.info.convertedFile=1;
         
