@@ -40,19 +40,22 @@ settings.legacyFlag=legacyFlag; %for bookkeeping
 %% generate basic info
 %load threshold and id data
 expname=[animalID '_u' unitID '_' expID];
+fname=['u' unitID '_' expID];
 if MUflag==0
-    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_threshold.mat'])); %generates thresholding
+    load(fullfile(expFolder,animalID,fname,[expname '_p' num2str(probeID) '_threshold.mat'])); %generates thresholding
 else
-    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_MUthreshold.mat'])); %generates MUthresholding
+    load(fullfile(expFolder,animalID,fname,[expname '_p' num2str(probeID) '_MUthreshold.mat'])); %generates MUthresholding
     thresholding=MUthresholding;
 end
-load(fullfile(expFolder,animalID,expname,[expname '_id.mat'])); %generates id
+load(fullfile(expFolder,animalID,fname,[expname '_id.mat'])); %generates id
 
 %compute total channel number
 nChannels=sum([id.probes.nChannels]);
 
 %get file size
-filename=fullfile(expFolder,animalID,expname,[expname '_amplifier.dat']);
+filename=fullfile(expFolder,animalID,fname,[expname '.ns6']);
+header=openNSx(filename,'noread');
+samples=header.MetaTags.DataPoints;
 fileinfo = dir(filename);
 samples = fileinfo.bytes/(2*nChannels); % Number of samples in amplifier data file
 samplesPerJob = ceil(samples/parts); % Number of samples to allocate to each of the 200 jobs
