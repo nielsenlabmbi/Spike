@@ -1,9 +1,10 @@
-function extractTrials(physpath,anapath,animal,unit,exp)
+function extractTrials(physpath,anapath,outpath,animal,unit,exp)
 
 %extracts trial information from the analyzer and digital file
 %input:
-%physpath: path to phys data (e.g., z:\ephysNew)
+%physpath: path to phys data (e.g., z:\ephysNew\data)
 %anapath: path to analyzer data (e.g., z:\ephysNew\analyzer)
+%outpath: path to output data (e.g., z:\ephysNew\processedSpikes)
 %animal: animal id
 %unit: unit id (string)
 %exp: exp id (string)
@@ -47,4 +48,5 @@ else
 end
 
 %save
-save(replace(physname,'digitalin.dat','trialInfo'),'trialInfo')
+outname=fullfile(outpath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '_' exp '_trialInfo.mat']);
+save(outname,'trialInfo')

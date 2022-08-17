@@ -1,0 +1,110 @@
+%function extractTrialsBR(physpath,anapath,animal,unit,exp)
+
+%extracts trial information from the analyzer and digital file
+%input:
+%physpath: path to phys data (e.g., z:\ephysNew)
+%anapath: path to analyzer data (e.g., z:\ephysNew\analyzer)
+%animal: animal id
+%unit: unit id (string)
+%exp: exp id (string)
+%
+%output:
+%structure trialInfo with
+%dom: parameters changed in looper
+%domval: parameter values for each condition
+%blankid: condition id for the blanks
+%triallist: condition id for each trial
+%eventTimes: time stamp for each digital event (in samples)
+%eventId: decimal number for event (0 corresponds to end of trial only)
+%eventCh: same as eventId, but turned into on/off for 3 digital channels
+
+
+%load analyzer and get all releveant info
+load(fullfile(anapath,animal,[animal '_u' unit '_' exp '.analyzer']),'-mat');
+
+%run helper functions on analyzer
+nrTrials=getnotrials(Analyzer);
+
+[dom,domval,blankId] = getdomainvalue(Analyzer);
+trialInfo.dom=dom;
+trialInfo.domval=domval;
+trialInfo.blankId=blankId;
+trialInfo.triallist=getcondtrial(Analyzer);
+
+
+
+%load digital file and extract event onsets
+physname=fullfile(physpath,animal,['u' unit '_' exp],[animal '_u' unit '_' exp 'nev']);
+NEV = openNEV(physname);
+pulseTime = double(NEV.Data.SerialDigitalIO.TimeStamp);
+pulseVal=double(NEV.Data.SerialDigitalIO.UnparsedData);
+pulseVal=pulseVal';
+
+timeOut=pulseTime;
+valOut=pulseVal;
+
+%first issue - get rid of noise spikes (pairs in quick succession)
+%time is in samples, so anything shorter than a frame refresh (8ms)
+%unreasonable - that's 240 samples at 30kHz; in reality the noise events
+%have a difference time of 1 sample
+diffTime=diff(pulseTime);
+idx=find(diffTime<240);
+
+valOut([idx idx+1])=[];
+timeOut([idx idx+1])=[];
+
+
+%translate events into individual channels
+digOut=de2bi(valOut,5);
+eventTimes=[];
+eventId=[];
+
+%column 3 is the trial start, stop marker
+diffOne=diff([0;digOut(:,3)]); %otherwise the first one does not show up
+
+tmpTrialStart=find(diffOne==1);
+eventTimes=timeOut(tmpTrialStart);
+eventId=ones(size(eventTimes));
+
+if length(tmpTrialStart)~=nrTrials
+    disp('mismatch between trial start events and nr trials!')
+    disp(['nr trials: ' num2str(nrTrials)])
+    disp(['nr start events: ' num2str(length(tmpTrialStart))])
+end
+
+tmpTrialStop=find(diffOne==-1);
+eventTimes=[eventTimes timeOut(tmpTrialStop)];
+eventId=[eventId one(size(eventTimes));
+if length(tmpTrialStop)~=nrTrials
+    disp('mismatch between trial stop events and nr trials!')
+    disp(['nr trials: ' num2str(nrTrials)])
+    disp(['nr start events: ' num2str(length(tmpTrialStop))])
+end
+
+%column 4 is the stimulus start, stop marker 
+diffTwo=diff([0;digOut(:,4)]); %adding an element makes the indexing easier 
+tmpStimStart=find(diffTwo==1);
+if length(tmpStimStart)~=nrTrials
+    disp('mismatch between stim start events and nr trials!')
+    disp(['nr trials: ' num2str(nrTrials)])
+    disp(['nr start events: ' num2str(length(tmpStimStart))])
+end
+
+tmpStimStop=find(diffTwo==-1);
+if length(tmpStimStop)~=nrTrials
+    disp('mismatch between stim stop events and nr trials!')
+    disp(['nr trials: ' num2str(nrTrials)])
+    disp(['nr start events: ' num2str(length(tmpStimStop))])
+end
+
+%construct output vectors
+eventTimes=
+
+
+%now construct stuff we want to keep
+trialInfo.eventTimes=find(dDigital~=0)+1;
+trialInfo.eventId=digiData(trialInfo.eventTimes);
+trialInfo.eventCh=de2bi(trialInfo.eventId,3);
+
+
+

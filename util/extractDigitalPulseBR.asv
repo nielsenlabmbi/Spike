@@ -1,0 +1,50 @@
+%extract digital pulses for blackrock files (includes fixes for extra noise
+%spikes)
+
+nevFile='D:\ephys\feai8\u000_003\feai8_u000_003.nev';
+anaFile='D:\ephys\analyzer\feai8\feai8_u000_003.analyzer';
+
+%read nev file
+NEV = openNEV(nevFile);
+pulseTime = double(NEV.Data.SerialDigitalIO.TimeStamp);
+pulseVal=double(NEV.Data.SerialDigitalIO.UnparsedData);
+pulseVal=pulseVal';
+
+timeOut=pulseTime;
+valOut=pulseVal;
+
+%first issue - get rid of noise spikes (pairs in quick succession)
+%time is in samples, so anything shorter than a frame refresh (8ms)
+%unreasonable - that's 240 samples at 30kHz; in reality the noise events
+%have a difference time of 1 sample
+diffTime=diff(pulseTime);
+idx=find(diffTime<240);
+
+valOut([idx idx+1])=[];
+timeOut([idx idx+1])=[];
+
+
+%for further check, need analyzer file
+load(anaFile,'-mat');
+nrTrials=getnotrials(Analyzer);
+
+%translate events into individual channels
+digOut=de2bi(valOut,5);
+
+%column 3 is the trial start, stop marker
+diffOne=diff([0;digOut(:,3)]); %otherwise the first one does not show up
+tmpTrialStart=find(diffOne==1);
+
+%column 4 is the stimulus start, stop marker 
+diffTwo=diff([0;digOut(:,4)]); %adding an element makes the indexing easier 
+tmpStimStart=find(diffTwo==1);
+
+%now check whether the number of events match up with the number of trials
+%that should be there
+if length(tmpTrialStart~=nrTrials)
+    disp('mismatch between trial start events and nr trials!')
+    disp(['nr trials: ' num2str(nrTrials)
+    disp(['nr start events: ' length(tmpTrialStart)])
+end
+
+
