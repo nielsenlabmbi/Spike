@@ -5,7 +5,8 @@
 1) thresholdGui (GUI) and thresholdGuiSettings (GUI):
    - visually set threshold for each channel, mark bad channels
    - uses median approach to calculate a threshold guess for every channel
-   - needs microprobe_wiring directory and read_Intan_Header
+   - needs read_Intan_Header
+   - note on probe configurations: code needs the probeConfig folder. that folder should contain a file for every probe configuration called probeConfig_type, where type is the name used for the probe in the id file (such as 64D). probeConfig files are functions that generate a matrix with 5 columns (column 1: channel number, column 2: x position, column 3: y, column 4: z, column 5: shank number). The threshold gui will automatically list all probes for which probeConfig files exist.
    - note: threshold data contains data for 1 probe only; id file is generated with probe information for all probes present
    *Output: filename_pX_threshold.mat and filename_id.mat (locally and on Z if selected); generates SpikeFiles folder*
 
