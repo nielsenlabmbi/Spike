@@ -1,0 +1,57 @@
+if strcmp(type,'single')
+                recprobe.channels = 0;
+                recprobe.x = 0;
+                recprobe.y = 0;
+                recprobe.z = 0;
+                recprobe.shaft = 1;
+                recprobe.tipelectrode = 1;
+                recprobe.type = type;
+                recprobe.wiring = [0 0 0 0 1];
+                recprobe.nShanks = 1;
+                recprobe.config = 1;
+            elseif strcmp(type,'tetrode')
+                recprobe.channels = [0 1 2 3]';
+                recprobe.x = 20*[-1 -1 1 1]';
+                recprobe.y = [0 0 0 0]';
+                recprobe.z = 20*[-1 1 -1 1]';
+                recprobe.shaft = [1 1 1 1]';
+                recprobe.tipelectrode = 1;
+                recprobe.type = type;
+                recprobe.wiring = ...
+                    [recprobe.channels recprobe.x...
+                    recprobe.y recprobe.z recprobe.shaft];
+                recprobe.nShanks = 1;
+                recprobe.config = [1 2 3 4];
+            elseif exist(['probe_' type],'file')==2
+                eval(['probe_' type]); close;
+
+                recprobe.channels = s.channels;
+                recprobe.x = s.x;
+                recprobe.y = s.y;
+                recprobe.z = s.z;
+                recprobe.shaft = s.shaft;
+                recprobe.tipelectrode = s.tipelectrode;
+                recprobe.type = type;
+                recprobe.wiring = probewiring;
+                recprobe.nShanks = length(unique(recprobe.shaft));
+                recprobe.nChannels = numel(recprobe.channels);
+
+                a = recprobe.wiring(recprobe.wiring(:,5) == 1,[1 4]);
+                [~,idx] = sort(a(:,2),'descend');
+                recprobe.config = a(idx,1);
+
+                a = recprobe.wiring(recprobe.wiring(:,5) == 2,[1 4]);
+                [~,idx] = sort(a(:,2),'descend');
+                recprobe.config = [recprobe.config; a(idx,1)]';
+            else
+                recprobe.channels = NaN;
+                recprobe.x = NaN;
+                recprobe.y = NaN;
+                recprobe.z = NaN;
+                recprobe.shaft = NaN;
+                recprobe.tipelectrode = NaN;
+                recprobe.type = type;
+                recprobe.wiring = NaN;
+                recprobe.nShanks = NaN;
+                recprobe.config = NaN;
+            end
