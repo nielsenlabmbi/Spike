@@ -1,7 +1,7 @@
 %generate wiring information for 32ch linear probe from Rice (inverted
 %connection to headstage)
 %standard format for columns in probewiring:
-%column 1: channel number
+%column 1: channel number (starts with 0)
 %column 2: x
 %column 3: y
 %column 4: z
