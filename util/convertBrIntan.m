@@ -33,3 +33,8 @@ fwrite(fid,second_version,'int16');
 fwrite(fid,sampleFreq,'single');
 fclose(fid);
 
+%% write binary amplifier file
+%intan format: int16, to convert to voltage in microvolts multiply by 0.195
+
+dat=openNSx('uV',filename);
+dat.Data;
