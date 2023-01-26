@@ -7,7 +7,7 @@
 %column 5: shaft
 function probewiring=probeConfig_tetrode
 
-probewiring=[0 -20 0 -20 1
-    1 -20 0 20 1
-    2 20 0 -20 1
-    3 20 0 20 1];
+probewiring=[0 -10 0 -10 1
+    1 -10 0 10 1
+    2 10 0 -10 1
+    3 10 0 10 1];
