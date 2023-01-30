@@ -1,9 +1,10 @@
 %conversion from blackrock files to intan
-%function convertBrIntan(brFile)
+%goal: generate a header fil (_info.rhd) containing only the sample rate
+%and an amplifier file (_amplifier.dat) containing the raw data 
+%this will allow the rest of the pipeline to function normally
+function convertBrIntan(brFile)
 
-brFile='D:\ephys\feac6\u002_005\feac6_u002_005.ns6';
-
-%% output file names
+% output file names
 [outPath,outFile,~]=fileparts(brFile);
 
 
@@ -11,13 +12,11 @@ brFile='D:\ephys\feac6\u002_005\feac6_u002_005.ns6';
 %this is written to be compatible with read_intan_header
 %note even though this is shorter than the intan header, that function
 %works (it returns empty fields for things that are not set)
+%but the things before the sampleFreq need to exist
 
 % read header info to get sample rate
 header=openNSx(brFile,'noread');
 sampleFreq=header.MetaTags.SamplingFreq;
-
-samples=header.MetaTags.DataPoints;
-
 
 hOut=fullfile(outPath,[outFile '_info.rhd']);
 fid = fopen(hOut, 'w');
