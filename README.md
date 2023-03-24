@@ -136,4 +136,11 @@ The new spike sorting GUI can be used with data processed with the old spike sor
    - Note: While we are keeping the same time stamps and therefore extracting the same basic waveforms as in the original implementation, there are some differences in how things are computed, most notably anything that has to do with channel position (such as the center of mass for the channel)
    - Also note that this obviously does not change how the channels were assigned during initial sorting (with a minimum applied across channels instead of keeping channels indepedent as in the new version)
 
+## Dealing with blackrock files
+To sort files acquired with Blackrock, they need to be converted into files that follow the same format as the intan files; at that point, the same code as always can be applied. 
+1) convertBrIntan
+   - provide name of blackrock file
+   - generates a fake header file, and an amplifier file
+*Output: filename_info.rhd, filename_amplifier.dat*
+
 
