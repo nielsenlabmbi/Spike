@@ -72,8 +72,7 @@ switch detChannelMethod
 
     case 2 %use experiment.mat
         %load experiment file
-        fbase=fileparts(spkSortIn);
-        load(expFolder,animalID,expname,'experiment.mat');
+        load(fullfile(expFolder,animalID,expname,'experiment.mat'));
 
         %check whether length of exeriment.mat matches length of channels in
         %spkSort
@@ -196,6 +195,9 @@ end
 
 
 %% save
-%remove detChSort to avoid confusion later on
+%copy detChSort into separate field (since we'll overwrite it later), and
+%remove it here
+spkSort.detChSortOrig=spkSort.detChSort;
 spkSort=rmfield(spkSort,'detChSort');
+
 save(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_spkSort']),'spkSort');

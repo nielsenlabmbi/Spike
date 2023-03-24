@@ -188,10 +188,21 @@ if JobID==0
     id.extractSpikes.jobEdges=edgeSample;
     
     save(fullfile(expFolder,animalID,expname,[expname '_id.mat']),'id'); 
-    
+
+    %need to update a few fields in spkSort as well
+    spkSort.info.jobStart=0;
+    spkSort.info.jobStop=199;
+    spkSort.info.name=name;
+    spkSort.info.artRej='Off';
+
+    save(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_spkSort']),'spkSort'); 
+
+
     if copyToZ==1
         zbase='Z:\EphysNew\processedSpikes';
         save(fullfile(zbase,animalID,expname,[expname '_id.mat']),'id'); 
+        save(fullfile(zbase,animalID,expname,[expname '_p' num2str(probeID) '_spkSort']),'spkSort'); %generates spkSort
+
     end
 end
 
