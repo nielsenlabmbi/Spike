@@ -135,6 +135,10 @@ The new spike sorting GUI can be used with data processed with the old spike sor
    - use same sortGui as always
    - Note: While we are keeping the same time stamps and therefore extracting the same basic waveforms as in the original implementation, there are some differences in how things are computed, most notably anything that has to do with channel position (such as the center of mass for the channel)
    - Also note that this obviously does not change how the channels were assigned during initial sorting (with a minimum applied across channels instead of keeping channels indepedent as in the new version)
+ 7) Divide into trials:
+   - function: extractTrialsBR
+   - This function addresses all of the issues with the digital pulses (hopefully), and saves the trial events in the same way as for the intan data
+    
 
 ## Dealing with blackrock files
 To sort files acquired with Blackrock, they need to be converted into files that follow the same format as the intan files; at that point, the same code as always can be applied. 

@@ -85,6 +85,11 @@ if nTrialStop~=nrTrials
     disp(['nr stop events: ' num2str(nTrialStop)])
 end
 
+%as a safety check, display trial duration 
+disp(['min trial time (s): ' num2str(min(timeOut(tmpTrialStop)-timeOut(tmpTrialStart))/30000)]);
+disp(['max trial time (s): ' num2str(max(timeOut(tmpTrialStop)-timeOut(tmpTrialStart))/30000)]);
+
+
 %column 4 is the stimulus start, stop marker 
 diffTwo=diff([0;digOut(:,4)]); %adding an element makes the indexing easier 
 
@@ -107,6 +112,11 @@ if nStimStop~=nrTrials
     disp(['nr trials: ' num2str(nrTrials)])
     disp(['nr stop events: ' num2str(nStimStop)])
 end
+
+%as a safety check, display stimulus duration 
+disp(['min stim time (s): ' num2str(min(timeOut(tmpStimStop)-timeOut(tmpStimStart))/30000)]);
+disp(['max stim time (s): ' num2str(max(timeOut(tmpStimStop)-timeOut(tmpStimStart))/30000)]);
+
 
 %sort output according to time
 [trialInfo.eventTimes,sortidx]=sort(eventTimes);
