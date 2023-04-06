@@ -1,5 +1,7 @@
 function computeMUThreshold(physpath,animal,unit,exp,probeID,threshlength,threshlevel,name,copyToZ)
 %compute the threshold for automatic MU extraction, save in separate file
+%will add sampleFreq to id if not done yet; will add SpikeFiles folder if
+%not done yet
 %input:
 % expFolder - experiment folder
 % animalID - animal ID (string)
@@ -21,6 +23,13 @@ basename=fullfile(physpath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '
 %need id file for number of channels and sampling rate
 load([basename '_id.mat']); %generates id
 nChannels=sum([id.probes.nChannels]);
+
+%id may not have sampleFreq yet - add here if yes
+if ~isfield(id,'sampleFreq')
+    headerName=[basename '_info.rhd'];
+    header=read_Intan_Header(headerName);
+    id.sampleFreq = header.sample_rate;
+end
 
 %figure out length of recording and length  
 fileinfo = dir([basename '_amplifier.dat']);
@@ -79,12 +88,17 @@ save([basename '_p' num2str(probeID) '_MUthreshold.mat'],'MUthresholding');
 id.MUthreshold.date{probeID}=date;
 id.MUthreshold.name{probeID}=name;
 
-save([basename '_id.mat'],'id'); 
+save([basename '_id.mat'],'id'); %this will also add id.sampleFreq if neeed
     
 if copyToZ==1
     expname=[animal '_u' unit '_' exp];
     zbase='Z:\EphysNew\processedSpikes';
     save(fullfile(zbase,animalID,expname,[expname '_id.mat']),'id');
     save(fullfile(zbase,animalID,expname,[expname '_p' num2str(probeID) '_MUthreshold.mat']),'MUthresholding');
+end
+
+%add SpikeFiles folder if necessary
+if ~exist([basename '/SpikeFiles'],'dir')
+    mkdir([basename '/SpikeFiles'])
 end
 
