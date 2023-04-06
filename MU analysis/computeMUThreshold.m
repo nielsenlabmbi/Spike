@@ -98,7 +98,8 @@ if copyToZ==1
 end
 
 %add SpikeFiles folder if necessary
-if ~exist([basename '/SpikeFiles'],'dir')
-    mkdir([basename '/SpikeFiles'])
+spkbase=fullfile(physpath,animal,[animal '_u' unit '_' exp],'SpikeFiles');
+if ~exist(spkbase,'dir')
+    mkdir(spkbase)
 end
 
