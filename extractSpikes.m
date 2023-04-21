@@ -318,6 +318,8 @@ if JobID==0
         id.extractSpikes.jobEdges{probeID}=edgeSample;
 
         id.extractSpikes.legacyFlag(probeID)=legacyFlag;
+
+        id.extractSpikes.settings{probeID}=settings;
     else
         id.MUextractSpikes.date{probeID}=date;
         id.MUextractSpikes.name{probeID}=name;
@@ -325,6 +327,8 @@ if JobID==0
         id.MUextractSpikes.jobStart{probeID}=startSample;
         id.MUextractSpikes.jobStop{probeID}=stopSample;
         id.MUextractSpikes.jobEdges{probeID}=edgeSample;
+
+        id.MUextractSpikes.settings{probeID}=settings;
     end
     
     save(fullfile(expFolder,animalID,expname,[expname '_id.mat']),'id'); 
