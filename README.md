@@ -26,13 +26,16 @@
 4) sortGUI (GUI):
    - sort data
    - load data file after specifying which jobs to load for which probe, as well as the matching ID file
-   - 'probe mode' plots 2 waveform parameters against each other for all (or a subset of) channels; 'tetrode mode' limits the plot to waveforms detected on one channel, and plots parameters computed for those waveforms based on the recordings from different nearby channels 
-   - note: you can limit the number of channels for the 'probe mode' display (maintains probe display format, but only shows events detected at the selected channels)
+   - Views:
+     - 'probe mode' plots 2 waveform parameters against each other for all (or a subset of) channels; the number of channels displayed can be limited using the button (maintains probe display format, but only shows events detected at the selected channels)
+     - 'tetrode mode' limits the plot to waveforms detected on one channel, and plots parameters computed at the time of those events based on the simultaneous recordings from different nearby channels (whether or not they crossed the threshold on those channels)
+     - 'channel mode' limits data to all events detected on a single channel
    - artefact rejection allows detection of events that occur on many channels simultaneously (specify the number of channels and an optional threshold to set what is considered as an artefact) 
    - note: you can pan, zoom in and out of the main plot using the buttons on the top right
    - when adding units or ROIs, double-click into each roi after drawing to end the drawing
    - info in unit table: unit: unit number and color; ch: main channel at which unit is detected; vis: unit visible or invisible in plot; cat: su, mu or noise; ISIv: percentage of events with ISIs below 1.2ms 
    - waveform plot: choose up to 2 units to display; can add additional waveforms for comparison; nr spikes controls how many spikes are shown per unit
+   - waveform reader: click to show the reader (circle in main plot); double click to activate the display of a waveform close to that spot; reader can be dragged around the display
    - unit footprint: distribution of detection channels for a selected unit
    - output is spkSort structure, which in addition to general info contains *unitid*: vector with unit assignment for each time stamp (-1 artefact, no distinction between SU, MU and noise), *spktimes*: vector with all spike time stamps, *unitinfo*: cell array with type assignemt (SU, MU, noise, none) for each unitid
    *Output: filename_pX_spkSort.mat (local and on Z); updates to _id.mat file (local and on Z) and database*
