@@ -45,7 +45,6 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,
 % marked as the maximum/winning event
 % - duplicateMxIdx: index into spkTimesDet etc for the winning event
 %
-% splits data into separate files for each probe
 % also updates the id file
 
 
