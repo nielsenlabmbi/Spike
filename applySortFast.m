@@ -17,21 +17,21 @@ function applySortFast(expFolder,animalID,unitID,expID,probeID,name,copyToZ,jobI
 
 % output:
 % one file
-% structure spk with fields
+% structure spkSortP with fields unitid, spktimes, detCh,detChSort
 
 %load history - assumption is this is saved as partSortHist
 expname=[animalID '_u' unitID '_' expID];
-histname=[expname '_partSortHist'];
+histname=[expname '_p' num2str(probeID) '_partSortHist'];
 load(fullfile(expFolder,animalID,expname,histname)); %generates sortHist
 
 %get data - generates spk
-load(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spike']));
+load(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkinfo']));
 
 %start building output
-spkSort.unitid=zeros(size(spk.detCh));
-spkSort.spktimes=spk.spkTimesDet; %times of every spike
-spkSort.detCh=spk.detCh; %channel of every spike
-spkSort.detChSort=spk.detChSort; %channel as sorted according to probe
+spkSortP.unitid=zeros(size(spk.detCh));
+spkSortP.spktimes=spk.spkTimesDet; %times of every spike
+spkSortP.detCh=spk.detCh; %channel of every spike
+spkSortP.detChSort=spk.detChSort; %channel as sorted according to probe
 
 nrUnits=0;
 
@@ -63,32 +63,32 @@ for i=1:length(sortHist)
     switch sortHist(i).type
         case 'new'
             roi.Position=sortHist(i).roi{:};
-            spkSort.unitid=assignUnit(spkSort.unitid,spkInfo,viewProp,unitid,roi,1);
+            spkSortP.unitid=assignUnit(spkSortP.unitid,spk,viewProp,unitid,roi,1);
             nrUnits=nrUnits+1;
 
         case 'addP'
-            roi.Position=app.sortActions(i).roi{:};
-            spkSort.unitid=assignUnit(spkSort.unitid,spkInfo,viewProp,unitid,roi,1);
+            roi.Position=sortHist(i).roi{:};
+            spkSortP.unitid=assignUnit(spkSortP.unitid,spk,viewProp,unitid,roi,1);
 
         case 'addM'
-            roi.Position=app.sortActions(i).roi{:};
-            spkSort.unitid=assignUnit(spkSort.unitid,spkInfo,viewProp,unitid,roi,-1);
+            roi.Position=sortHist(i).roi{:};
+            spkSortP.unitid=assignUnit(spkSortP.unitid,spk,viewProp,unitid,roi,-1);
 
         case 'rem'
-            spkSort.unitid(spkSort.unitid==unitid)=0;
+            spkSortP.unitid(spkSortP.unitid==unitid)=0;
             %renumber the remainder
             for u=unitid+1:nrUnits
-                spkSort.unitid(spkSort.unitid==u)=u-1;
+                spkSortP.unitid(spkSortP.unitid==u)=u-1;
             end
             nrUnits=nrUnits-1;
 
         case 'merge'
             delUnit=max(unitid);
             keepUnit=min(unitid);
-            spkSort.unitid(spkSort.unitid==delUnit)=keepUnit;
+            spkSortP.unitid(spkSortP.unitid==delUnit)=keepUnit;
             %renumber the remainder
             for u=delUnit+1:nrUnits
-                spkSort.unitid(spkSort.unitid==u)=u-1;
+                spkSortP.unitid(spkSortP.unitid==u)=u-1;
             end
             nrUnits=nrUnits-1;
 
@@ -96,16 +96,31 @@ for i=1:length(sortHist)
 end
 
 %save data
-spkSort.info.probeid=ProbeID;
-spkSort.info.name=name;
-spkSort.info.date=date;
-spkSort.info.job=jobID;
-spkSort.info.expname=expname;
-spkSort.info.historyFile=histname;
+spkSortP.info.probeid=probeID;
+spkSortP.info.name=name;
+spkSortP.info.date=date;
+spkSortP.info.job=jobID;
+spkSortP.info.expname=expname;
+spkSortP.info.historyFile=histname;
 
-save(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkSort']),'spkSort');
+save(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkSort']),'spkSortP');
 
 
+%add to id file for job 0 for bookkeeping
+if jobID==0
+    load(fullfile(expFolder,animalID,expname,[expname '_id'])); %generates id
+
+    id.partialSort.name{probeID}=name;
+    id.partialSort.date{probeID}=date;
+    
+    save(fullfile(expFolder,animalID,expname,[expname '_id']),'id');
+    if copyToZ==1
+        zbase='Z:\EphysNew\processedSpikes';
+        save(fullfile(zbase,animalID,expname,[expname '_id']),'id');
+    end
+end
+
+disp(['applySortFast job ID ' num2str(jobID) ' done.'])
 end
 
 function sortVec=assignUnit(sortVec,spkInfo,viewProp,unitid,roihandle,actionflag)
