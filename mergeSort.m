@@ -88,7 +88,7 @@ id.spikeSort.name{probeID}=name;
 id.spikeSort.date{probeID}=date;
 id.spikeSort.NSingleUnit(probeID)=sum(strcmp(spkSort.unitinfo,'SU'));
 id.spikeSort.NMultiUnit(probeID)=sum(strcmp(spkSort.unitinfo,'MU'));
-id.spkeSort.Note{probeID}='based on merged sorts';
+id.spikeSort.Note{probeID}='based on merged sorts';
 
 %save spkSort and id
 save(fullfile(expFolder,animalID,expname,[expname  '_p' num2str(probeID) '_spkSort']),'spkSort');

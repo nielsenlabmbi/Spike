@@ -110,8 +110,8 @@ save(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(job
 if jobID==0
     load(fullfile(expFolder,animalID,expname,[expname '_id'])); %generates id
 
-    id.partialSort.name{probeID}=name;
-    id.partialSort.date{probeID}=date;
+    id.applyJobSort.name{probeID}=name;
+    id.applyJobSort.date{probeID}=date;
     
     save(fullfile(expFolder,animalID,expname,[expname '_id']),'id');
     if copyToZ==1
