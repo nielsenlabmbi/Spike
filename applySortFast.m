@@ -195,14 +195,16 @@ switch viewProp.plotmode
 end
 
 %get data in ROI
-selUnit=inpolygon(xData,yData,roihandle.Position(:,1),roihandle.Position(:,2)); %logical array
+if ~isempty(xData)
+    selUnit=inpolygon(xData,yData,roihandle.Position(:,1),roihandle.Position(:,2)); %logical array
 
-%edit unitid: add unit for all but negative rois
-if actionflag~=-1
-    sortVec(idxData(selUnit))=unitid;
-else
-    tf=selUnit & sortVec(idxData)==unitid;
-    sortVec(idxData(tf))=0;
+    %edit unitid: add unit for all but negative rois
+    if actionflag~=-1
+        sortVec(idxData(selUnit))=unitid;
+    else
+        tf=selUnit & sortVec(idxData)==unitid;
+        sortVec(idxData(tf))=0;
+    end
 end
 
 end

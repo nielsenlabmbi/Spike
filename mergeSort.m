@@ -71,11 +71,17 @@ for i=1:nrUnits
     ISIv=perISIv*100;
 
     spkSort.unitisi(i)=ISIv;
-    
+
+    %correct unit assignments if there is now an ISI violation for a SU
+    if ISIv~=0 && strcmp(spkSort.unitinfo{i},'SU')
+        spkSort.unitinfo{i}='MU';
+    end
+
     %footprint
     chidx=spkSort.detCh(spkSort.unitid==i);
     spkSort.unitFP(i)=length(unique(chidx));
 end
+
 
 %compute spike properties - to save time, just copy them from the previous
 %spike sort
