@@ -25,7 +25,8 @@
 
 4) sortGUI (GUI):
    - sort data
-   - load data file after specifying which jobs to load for which probe, as well as the matching ID file
+   - load data file after specifying an id file or a spkSort file
+   - for the id file, can limit the number of jobs and the range of jobs
    - Views:
      - 'probe mode' plots 2 waveform parameters against each other for all (or a subset of) channels; the number of channels displayed can be limited using the button (maintains probe display format, but only shows events detected at the selected channels)
      - 'tetrode mode' limits the plot to waveforms detected on one channel, and plots parameters computed at the time of those events based on the simultaneous recordings from different nearby channels (whether or not they crossed the threshold on those channels)
@@ -37,8 +38,12 @@
    - waveform plot: choose up to 2 units to display; can add additional waveforms for comparison; nr spikes controls how many spikes are shown per unit
    - waveform reader: click to show the reader (circle in main plot); double click to activate the display of a waveform close to that spot; reader can be dragged around the display
    - unit footprint: distribution of detection channels for a selected unit
+   - refreshjobs reloads a random sample of jobs if less than 100% of jobs are loaded 
+   - undo can undo the last action applied
+   - apply history applies all of the steps applied to a previously sorted file to the current ones
    - output is spkSort structure, which in addition to general info contains *unitid*: vector with unit assignment for each time stamp (-1 artefact, no distinction between SU, MU and noise), *spktimes*: vector with all spike time stamps, *unitinfo*: cell array with type assignemt (SU, MU, noise, none) for each unitid
-   *Output: filename_pX_spkSort.mat (local and on Z); updates to _id.mat file (local and on Z) and database*
+   *Output for 100% jobs: filename_pX_spkSort.mat (local and on Z); filename_pX_sortHist.mat (local and on Z); updates to _id.mat file (local and on Z) and database*
+   *Output for <100% jobs: filename_pX_partSpkSort.mat (local and on Z); filename_pX_partSortHist.mat (local and on Z); updates to _id.mat file (local and on Z) and database*
 
 
 
@@ -65,6 +70,26 @@
    - compute PSTH for a unit
    - uses the data computed from SUTrialData 
    - note: the same funciton can be used for MUThresh data as well by supplying the data for a channel rather than a single unit (as provided by MUTrialData)
+
+## Partial spike sorting pipeline (for long files)
+1) sortGUI 
+   - First sort using less than 100% of jobs, making sure by clicking refreshjobs that the sorting is representative. 
+   - Also assign categories to all units. 
+   - This results in the creation of a partSpkSort and partSortHist file.
+
+2) applySortFast
+   - apply partSortHist to each spkinfo job file
+   - can be run in a parfor loop
+   - creates spkSortP structure with fields unitid, spktimes, detCh, detChSort and info
+   *Output: SpikeFiles\filename_jID_pX_spkSort.mat; updates to _id.mat file (local and on Z if selected)*
+
+3) mergeSort
+   - merge the individual job spkSort files
+   - creates spkSort structure containing the fields unitid, spktimes, detCh, detChSort, unitinfo, spkProps, info
+   - note that spkProps (waveform info) is copied from the partSpkSort file and therefore only reflects properties of that random sample of spikes
+   - unit categories are copied form the partSpkSort file as well (as set in the sortGui); SU that now have ISI violations are downgraded to MU in this process
+   *Output: SpikeFiles\filename__pX_spkSort.mat; updates to _id.mat file (local and on Z if selected)*
+
 
 
 ## Processing of multi-unit data
