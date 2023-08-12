@@ -111,6 +111,8 @@ for g = 1:header.number_of_signal_groups
     header.signal_group_num_amp_enabled(g)=N_amp_enabled;
 end
 
+fclose(fid);
+
 end
 
 

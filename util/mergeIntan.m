@@ -43,7 +43,7 @@ headerFile=fullfile(expFolder,animalID,[animalID '_' mergeStruct{1}],[animalID '
 headerIn=read_Intan_Header(headerFile);
 
 %get number of channels
-mergeInfo.nChannel=sum(headerIn.signal_group_num_amp_channels(headerIn.signal_group_enabled==1));
+mergeInfo.nChannel=sum(headerIn.signal_group_num_amp_enabled(headerIn.signal_group_enabled==1));
 
 %generate output file
 hOut=fullfile(fullfile(expFolder,animalID,outname,[outname '_info.rhd']));
@@ -86,32 +86,54 @@ outFID = fopen(outAmp,'a+');
 %go through files, read and append; broken into parts to make it
 %manageable
 for f=1:length(mergeStruct)
-    %we need a buffer to mask the transition between the files (filtering
-    %creates an artefact otherwise)
-    if f>1
-        fwrite(outFID,zeros(1,buffer),'int16');
-    end
-    
+   
     mergeFile=fullfile(expFolder,animalID,[animalID '_' mergeStruct{f}],[animalID '_' mergeStruct{f} '_amplifier.dat']);
     fileinfo = dir(mergeFile);
     mergeInfo.filesize(f)=fileinfo.bytes;
-    samplesPerJob = ceil(fileinfo.bytes/parts); % Number of samples in amplifier data file
+    samplesPerJob = ceil(fileinfo.bytes/(2*parts)); % 2 bytes per int16
 
     mergeFID = fopen(mergeFile,'r'); % Load amplifier data
-
+   
     for i=0:parts-2 %need to treat the last one differently
         waitbar(((f-1)*parts+i+1)/totJobs,h)
         data = fread(mergeFID,samplesPerJob, 'int16');
+
+        %we need a buffer to mask the transition between the files (filtering
+        %creates an artefact otherwise)
+        if f>1 && i==0
+            %start of the new file - because of an artefact at the start of
+            %each file, need to replace those data points
+            %the solution here avoids having to divide the files into
+            %multiples of channels in each read operation
+            dataIn=data(1:mergeInfo.nChannel*3); %3 time points
+            dataIn=reshape(dataIn,mergeInfo.nChannel,3);
+            dataIn(:,1)=dataIn(:,3);
+            dataIn(:,2)=dataIn(:,3);
+            data(1:mergeInfo.nChannel*3)=dataIn(:);
+
+            %now create buffer - this time we need more of the incoming
+            %data; this will use the fixed data just generated
+            dataIn=data(1:mergeInfo.nChannel*mergeInfo.bufferLength); 
+            dataIn=reshape(dataIn,mergeInfo.nChannel,mergeInfo.bufferLength);
+            dataIn=fliplr(dataIn); %to match ends
+            tvec=linspace(0,1,mergeInfo.bufferLength);
+            buffer=dataIn.*tvec+dataEnd.*(1-tvec);
+            fwrite(outFID,buffer(:),'int16');
+        end
+
         fwrite(outFID,data,'int16');
     end
 
     %last one - potentially less than full job left
     waitbar(f*parts/totJobs,h)
-    samplesLeft=fileinfo.bytes-samplesPerJob*(parts-1);
+    samplesLeft=(fileinfo.bytes-ftell(mergeFID))/2;
     data = fread(mergeFID,samplesLeft, 'int16');
     fwrite(outFID,data,'int16');
  
     %use the data for transition to the next one
+    dataEnd=data(end-mergeInfo.nChannel*mergeInfo.bufferLength+1:end);
+    dataEnd=reshape(dataEnd,mergeInfo.nChannel,mergeInfo.bufferLength);
+    dataEnd=fliplr(dataEnd); %to match ends
 
     fclose(mergeFID);
 end
