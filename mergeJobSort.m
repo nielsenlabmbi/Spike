@@ -1,5 +1,5 @@
-function mergeSort(expFolder,animalID,unitID,expID,probeID,name,copyToZ)
-% merging of sort files
+function mergeJobSort(expFolder,animalID,unitID,expID,probeID,name,copyToZ)
+% merging of sort applied to each job file
 %
 % input parameters:
 % expFolder - base folder for experiments (string)

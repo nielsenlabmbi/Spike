@@ -32,7 +32,7 @@ settings.refrTime=1; %timeout before and after large minima in ms
 settings.refrCross=0.5; %timeout after threshold crossing in ms
 settings.spikeSamples=[15 25]; %number of sample points per spike before and after the minimum, used to be [15 15]
 settings.spikeRadius=50; %distance radius over which to extract spike waveforms
-settings.offsetSamples=400; %this used to be partsOverlapSamples; overlap between files (increased to avoid filtering artefact)
+settings.offsetSamples=800; %this used to be partsOverlapSamples; overlap between files (increased to avoid filtering artefact)
 settings.legacyFlag=legacyFlag; %for bookkeeping
 
 %% generate basic info
@@ -64,7 +64,7 @@ end
 
 
 %% read data
-firstSample = samplesPerJob*JobID - settings.offsetSamples; % Sets first sample to process; each job has 1st 2msec overlap with previous job and last 2msec overlap with next job
+firstSample = samplesPerJob*JobID - settings.offsetSamples; % Sets first sample to process; each job hasoverlap with previous job and next job
 if firstSample<0
     firstSample=0;
 end
@@ -73,10 +73,14 @@ DataFile = fopen(filename,'r'); % Load amplifier data
 fseek(DataFile,2*nChannels*firstSample,'bof'); % Offset from beginning of file
 
 if JobID == parts-1 % The last job - first JobID is 0
+    % If JobID is the last job, read all the samples left
     samplesLeft = samples - samplesPerJob*(parts-1) + settings.offsetSamples; % samplesLeft=TotalSamples-SamplesDone+Overhang
-    Data = fread(DataFile, [nChannels samplesLeft], 'int16'); % If JobID is the last job, read all the samples left
+    Data = fread(DataFile, [nChannels samplesLeft], 'int16'); 
+elseif JobID == 0
+    Data = fread(DataFile, [nChannels samplesPerJob], 'int16');
 else
-    Data = fread(DataFile, [nChannels samplesPerJob], 'int16'); % If JobID isn't the last job, read samplesPerJob samples past the file position set by fseek
+    % If JobID isn't the first or last job, read samplesPerJob+offset samples past the file position set by fseek
+    Data = fread(DataFile, [nChannels samplesPerJob+settings.offsetSamples], 'int16'); 
 end
 
 fclose(DataFile);
@@ -192,10 +196,12 @@ CrossTh = movmax(CrossTh,[nCross 0],1);
 %this sets the occurence of the minimum of a waveform to 1
 Spikes = CrossTh & minData==Data; 
 
-% Removes spikes detected in the first 1msec overlap at the beginning and end of each job. 
+% Removes spikes detected in the overlap at the beginning and end of each job. 
 %This is important as some of these may go beyond recording to get waveform.
 Spikes(1:floor(settings.offsetSamples/2),:)=0; 
 Spikes(end-floor(settings.offsetSamples/2):end,:)=0; 
+
+
 
 
 %% extract the actual waveforms
@@ -276,7 +282,8 @@ if JobID==0
     jobVec=[0:parts-1];
     startSample = samplesPerJob*jobVec - settings.offsetSamples;
     startSample(startSample<0)=0;
-    stopSample=startSample+samplesPerJob;
+    stopSample=startSample+samplesPerJob+settings.offsetSamples;
+    stopSample(1)=samplesPerJob;
     stopSample(end)=samples;
     edgeSample=startSample+settings.offsetSamples/2; %boundaries between samples
     edgeSample(end+1)=samples; %to finish the last bin
