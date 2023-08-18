@@ -16,8 +16,10 @@ spkSortIn=load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID
 %load merge info
 load(fullfile(expFolder,animalID,expname,[expname '_mergeInfo.mat'])); %generates mergeInfo
 
-%load id file for merged file
-load(fullfile(expFolder,animalID,expname,[expname '_id.mat'])); %generates id
+%load id file for merged file - we need this for the extract offset and
+%other
+%info
+idIn=load(fullfile(expFolder,animalID,expname,[expname '_id.mat'])); 
 
 %compute edges of files (in samples)
 %filesize - bytes per file merged
@@ -60,7 +62,7 @@ for f=1:length(mergeInfo.files)
     %part of processing the first and last job
     %here, merging changes how jobs are organized, and spikes are not
     %dropped for the parts where files are connected
-    offsetSamples=id.extractSpikes.settings{probeID}.offsetSamples;
+    offsetSamples=idIn.id.extractSpikes.settings{probeID}.offsetSamples;
     endFile=mergeInfo.filesize(f)/(mergeInfo.nChannel*2);
     tf = spkSort.spktimes>floor(offsetSamples/2);
     tf = tf & spkSort.spktimes<endFile-floor(offsetSamples/2);
@@ -85,25 +87,32 @@ for f=1:length(mergeInfo.files)
 %         end
 %     end
     save(outfile,'spkSort');
-end
 
+    %either generate new id files or add info to them
+    idname=fullfile(expFolder,animalID,outname,[outname '_id.mat']);
+    if ~exist(idname,'file')
+        %generate id, only with the minimal information (since the rest was
+        %not done on this file individually)
+        id.exptId=outname;
+        id.probes=idIn.id.probes;
+        id.isBR=idIn.id.isBR;
+        id.sampleFreq=idIn.id.sampleFreq;
+    else
+        load(idname); %generates id
+    end
+    id.spikeSort.name{probeID}=idIn.id.spikeSort.name{probeID};
+    id.spikeSort.date{probeID}=idIn.id.spikeSort.date{probeID};
+    id.spikeSort.NSingleUnit(probeID)=idIn.id.spikeSort.NSingleUnit(probeID);
+    id.spikeSort.NMultiUnit(probeID)=idIn.id.spikeSort.NMultiUnit(probeID);
 
-%deal with id files: the assumption here is that the entire pipeline was
-%run on the merged file, and no id file was generated yet (in general,
-%since the pipeline parameters matter for the spkSort file, need to keep
-%the 2 files matched anyways)
+    %add info about merging and splitting (has not happened yet as the id file
+    %is not touched/generated during merge)
+    id.mergeInfo.processedMerged(probeID)=1;
+    id.mergeInfo.splitSortFiles.name{probeID}=name;
+    id.mergeInfo.splitSortFiles.date{probeID}=date;
 
+    save(idname,'id');
 
-
-%add info about merging and splitting (has not happened yet as the id file
-%is not touched/generated during merge)
-id.mergeInfo.processedMerged(probeID)=1;
-id.mergeInfo.splitSortFiles.name{probeID}=name;
-id.mergeInfo.splitSortFiles.date{probeID}=date;
-
-for f=1:length(mergeInfo.files)
-    outname=[animalID '_' mergeInfo.files{f}];
-    save(fullfile(expFolder,animalID,outname,[outname '_id.mat']),'id');
 end
 
 

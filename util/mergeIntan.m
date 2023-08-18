@@ -129,8 +129,6 @@ for f=1:length(mergeStruct)
     samplesLeft=(fileinfo.bytes-ftell(mergeFID))/2;
     data = fread(mergeFID,samplesLeft, 'int16');
     fwrite(outFID,data,'int16');
-    ftell(outFID)
-    disp(mergeInfo.filesize(f))
  
     %use the data for transition to the next one
     dataEnd=data(end-mergeInfo.nChannel*mergeInfo.bufferLength+1:end);

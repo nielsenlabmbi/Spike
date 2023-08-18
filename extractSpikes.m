@@ -1,4 +1,4 @@
-function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUflag,legacyFlag,parts,JobID)
+function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUflag,legacyFlag,parts,JobID,varargin)
 % extractSpikes computes spike waveforms
 % input parameters:
 % expFolder - experiment folder
@@ -49,8 +49,13 @@ load(fullfile(expFolder,animalID,expname,[expname '_id.mat'])); %generates id
 %compute total channel number
 nChannels=sum([id.probes.nChannels]);
 
-%get file size
-filename=fullfile(expFolder,animalID,expname,[expname '_amplifier.dat']);
+%get file size for amplifier file
+if nargin==11
+    ampFolder=expFolder;
+else
+    ampFolder=varargin{1};
+end
+filename=fullfile(ampFolder,animalID,expname,[expname '_amplifier.dat']);
 fileinfo = dir(filename);
 samples = fileinfo.bytes/(2*nChannels); % Number of samples in amplifier data file
 samplesPerJob = ceil(samples/parts); % Number of samples to allocate to each of the 200 jobs
@@ -196,10 +201,11 @@ CrossTh = movmax(CrossTh,[nCross 0],1);
 %this sets the occurence of the minimum of a waveform to 1
 Spikes = CrossTh & minData==Data; 
 
+
 % Removes spikes detected in the overlap at the beginning and end of each job. 
 %This is important as some of these may go beyond recording to get waveform.
 Spikes(1:floor(settings.offsetSamples/2),:)=0; 
-Spikes(end-floor(settings.offsetSamples/2):end,:)=0; 
+Spikes(end-floor(settings.offsetSamples/2)+1:end,:)=0; 
 
 
 
