@@ -33,6 +33,7 @@ spkSortP.spktimes=spk.spkTimesDet; %times of every spike
 spkSortP.detCh=spk.detCh; %channel of every spike
 spkSortP.detChSort=spk.detChSort; %channel as sorted according to probe
 
+
 nrUnits=0;
 
 %go through and apply the steps per the history
@@ -47,6 +48,7 @@ for i=1:length(sortHist)
     viewProp.xPropTet=sortHist(i).viewXTet;
     viewProp.yPropTet=sortHist(i).viewYTet;
     viewProp.detChTet=sortHist(i).detChTet;
+    viewProp.detTetNb=sortHist(i).detTetNb;
     viewProp.xChTet=sortHist(i).xChTet;
     viewProp.yChTet=sortHist(i).yChTet;
 
@@ -92,8 +94,32 @@ for i=1:length(sortHist)
             end
             nrUnits=nrUnits-1;
 
+        case 'artrejOn'
+            if isnan(sortHist(i).artThreshold) %only using channel criterion
+                artIdx = find(spk.NDuplicate>=sortHist(i).artNCh);
+            else %channel and threshold
+                if sortHist(i).artThreshold<0
+                    artIdx = find(spk.NDuplicate>=sortHist(i).artNCh & ...
+                        spk.AmpMinDet<=sortHist(i).artThreshold);
+                else
+                    artIdx = find(spk.NDuplicate>=sortHist(i).artNCh & ...
+                        spk.AmpMaxDet>=sortHist(i).artThreshold);
+                end
+            end
+            spkSortP.unitid(artIdx)=-1; 
+
+            %no need to check for deleted units, as recorded as a separate
+            %event
+            
+                                
+        case 'artrejOff'
+            spkSortP.unitid(spkSortP.unitid==-1)=0;
+
+
     end
 end
+
+
 
 %save data
 spkSortP.info.probeid=probeID;
@@ -123,23 +149,24 @@ end
 disp(['applySortFast job ID ' num2str(jobID) ' done.'])
 end
 
+%% helper function
+
 function sortVec=assignUnit(sortVec,spkInfo,viewProp,unitid,roihandle,actionflag)
 %edit unitid vector
 %actionflag:
 % 1: add a positive roi
 % -1: add a negative roi
-% this operates on the data as shown (i.e.,
-% artefacts are not included)
 
 %get data
 %generate indices into full spk array
 idxData=[1:length(sortVec)];
 
 %remove any artefacts (labeled as -1)
-%tf=app.spkInfo.unitid~=-1;
+tf=sortVec~=-1;
 
 %remove all duplicates
-tf = spkInfo.flagDuplicate==0;
+tf = tf & spkInfo.flagDuplicate==0;
+
 
 %plotmode 1: probe, 2: tetrode, 3: channel
 switch viewProp.plotmode
@@ -155,9 +182,20 @@ switch viewProp.plotmode
         idxData=idxData(tf);
 
     case 2
-        %we only need the data for events that are detected on the
-        %detection channels
-        tf=tf & (spkInfo.detCh==viewProp.detChTet);
+        %reduce to detection channels
+        idx=find(spkInfo.detCh==viewProp.detChTet);
+        if ~isempty(idx)
+            chList=spkInfo.chListAll{idx(1)};
+        else
+            chList=viewProp.detChTet;
+        end
+
+        if viewProp.detTetNb==0 %no neighbors
+            tf=tf & (spkInfo.detCh==viewProp.detChTet);
+        else
+            %get neighborhood channels
+            tf = tf & ismember(spkInfo.detCh,chList);
+        end
 
         xData=spkInfo.(viewProp.xPropTet)(tf);
         yData=spkInfo.(viewProp.yPropTet)(tf);
@@ -168,12 +206,9 @@ switch viewProp.plotmode
             nCh=size(xData{1},2);
             xData=cell2mat(xData);
             yData=cell2mat(yData);
+         
             xData=reshape(xData,nCh,sum(tf));
             yData=reshape(yData,nCh,sum(tf));
-
-            %now get the data for the channels selected for x and y
-            chList=spkInfo.chListAll(tf);
-            chList=chList{1};
 
             xidx=find(chList==viewProp.xChTet);
             yidx=find(chList==viewProp.yChTet);
@@ -195,7 +230,7 @@ switch viewProp.plotmode
 end
 
 %get data in ROI
-if ~isempty(xData)
+if ~isempty(xData) && ~isempty(yData)
     selUnit=inpolygon(xData,yData,roihandle.Position(:,1),roihandle.Position(:,2)); %logical array
 
     %edit unitid: add unit for all but negative rois

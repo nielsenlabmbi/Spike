@@ -71,11 +71,12 @@
    - uses the data computed from SUTrialData 
    - note: the same funciton can be used for MUThresh data as well by supplying the data for a channel rather than a single unit (as provided by MUTrialData)
 
+
 ## Partial spike sorting pipeline (for long files)
 1) sortGUI 
    - First sort using less than 100% of jobs, making sure by clicking refreshjobs that the sorting is representative. 
    - Also assign categories to all units. 
-   - This results in the creation of a partSpkSort and partSortHist file.
+   *Output: filename_pX_partSpkSort.mat, filename_pX_partSortHist.mat* 
 
 2) applySortFast
    - apply partSortHist to each spkinfo job file
@@ -90,6 +91,28 @@
    - unit categories are copied form the partSpkSort file as well (as set in the sortGui); SU that now have ISI violations are downgraded to MU in this process
    *Output: SpikeFiles\filename__pX_spkSort.mat; updates to _id.mat file (local and on Z if selected)*
 
+
+## Spike sorting across separate files (all functions in util)
+1) mergeIntan
+   - merges intan amplifier files
+   - merging occurs independently of probes
+   - no id file needed for merging (will be created in next step)
+   - also creates header for the merged file
+   - collects all relevant merging information in structure mergeInfo
+   - by default, the unit of the output file is set to uMMM to indicate a merged file; the experiment ID is specified by the user
+    *Output: filename_uMMM_expId_amplifier.dat, filename_uMMM_expId_info.rhd, filename_uMMM_expId_mergeInfo.mat*
+
+2) regular processing
+   - proceed through the regular pipeline, using the threshold GUI to generate an ID file for the merged amplifier data
+   - should end with spkSort file for merged data
+
+3) splitIntan
+   - uses the info saved in mergeInfo to split the sorted data into separate sort files
+   - spkSort files will be generated in the correct folders for the original (pre-merged) data
+   - it will overwrite existing spkSort files for the same probe only
+   - also adds information to the id file (or generates id file) for those data files
+   - unit assignment will be copied from the merged file
+   *Output: for every file that was merged, filenames_pX_spkSort.mat and filenames_id.mat*
 
 
 ## Processing of multi-unit data

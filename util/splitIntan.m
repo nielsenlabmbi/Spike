@@ -73,19 +73,17 @@ for f=1:length(mergeInfo.files)
         end
     end
 
-
-    
     %save sort file
     outname=[animalID '_' mergeInfo.files{f}];
     outfile=fullfile(expFolder,animalID,outname,[outname '_p' num2str(probeID) '_' num2str(f) '_spkSort.mat']);
     %check first whether file exist - if yes ask
-%     if exist(outfile,'file')
-%         answer=questdlg('At least one spkSort file already exists and will be overwritten. Proceed?',...
-%             'Warning','Yes','Cancel','Yes');
-%         if strcmp(answer,'Cancel')
-%             return;
-%         end
-%     end
+    if exist(outfile,'file')
+        answer=questdlg('At least one spkSort file already exists and will be overwritten. Proceed?',...
+            'Warning','Yes','Cancel','Yes');
+        if strcmp(answer,'Cancel')
+            return;
+        end
+    end
     save(outfile,'spkSort');
 
     %either generate new id files or add info to them
