@@ -93,8 +93,8 @@ save([basename '_id.mat'],'id'); %this will also add id.sampleFreq if neeed
 if copyToZ==1
     expname=[animal '_u' unit '_' exp];
     zbase='Z:\EphysNew\processedSpikes';
-    save(fullfile(zbase,animalID,expname,[expname '_id.mat']),'id');
-    save(fullfile(zbase,animalID,expname,[expname '_p' num2str(probeID) '_MUthreshold.mat']),'MUthresholding');
+    save(fullfile(zbase,animal,expname,[expname '_id.mat']),'id');
+    save(fullfile(zbase,animal,expname,[expname '_p' num2str(probeID) '_MUthreshold.mat']),'MUthresholding');
 end
 
 %add SpikeFiles folder if necessary
