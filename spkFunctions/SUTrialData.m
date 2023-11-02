@@ -39,9 +39,19 @@ load([basename '_trialInfo.mat']);
 %load SU data
 load([basename '_p' num2str(probeId) '_spkSort.mat']);
 
-%get sampling rate
-header=read_Intan_Header([basename '_info.rhd']);
-sampleFrq = header.sample_rate;
+%get sampling rate - either from header file or from id file
+headerName=[basename '_info.rhd'];
+idName=[basename '_id.mat'];
+if exist(headerName,'file')~=0
+    header=read_Intan_Header(headerName);
+    sampleFrq = header.sample_rate;
+elseif exist(idName,'file')~=0
+    load(idName);
+    sampleFrq=id.sampleFreq;
+else
+    disp('file with sample rate missing')
+    return;
+end
 
 %translate time windows into samples
 baseSample=round(baseTime*sampleFrq);
