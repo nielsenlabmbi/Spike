@@ -72,7 +72,7 @@ for u=1:length(chidx)
     for i=1:length(eventIdx)
         eTime=trialInfo.eventTimes(eventIdx(i));
 
-        sidx=find(MUspkMerge.detChSort==chidx(u) & MUspkMerge.flagDuplicate==0 & ...
+        sidx=find(MUspkMerge.detChSort==chidx(u)  & ...
             MUspkMerge.spktimes>eTime-baseSample & MUspkMerge.spktimes<eTime+stimSample);
         %spkTimesTmp=(MUspkMerge.spktimes(sidx)-eTime)/id.sampleFreq*1000;
         %flagDupTmp=MUspkMerge.flagDuplicate(sidx);
@@ -80,13 +80,13 @@ for u=1:length(chidx)
         MUThresh(u).spktimes{i}=(MUspkMerge.spktimes(sidx)-eTime)/id.sampleFreq*1000;
         MUThresh(u).Nspk(i)=length(sidx);
         
-        bidx=find(MUspkMerge.detCh==chidx(u) & MUspkMerge.flagDuplicate==0 & ...
+        bidx=find(MUspkMerge.detCh==chidx(u)  & ...
             MUspkMerge.spktimes>eTime-baseSample & MUspkMerge.spktimes<eTime);
         MUThresh(u).baseNspk(i)=length(bidx);
         MUThresh(u).baseFrate(i)=length(bidx)/baseTime;
        
-        stidx=find(MUspkMerge.detCh==chidx(u) & MUspkMerge.flagDuplicate==0 ...
-            & MUspkMerge.spktimes>eTime & MUspkMerge.spktimes<eTime+stimSample);
+        stidx=find(MUspkMerge.detCh==chidx(u) & ...
+            MUspkMerge.spktimes>eTime & MUspkMerge.spktimes<eTime+stimSample);
         MUThresh(u).stimNspk(i)=length(stidx);
         MUThresh(u).stimFrate(i)=length(stidx)/stimTime;
     end
