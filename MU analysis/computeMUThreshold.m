@@ -87,6 +87,7 @@ save([basename '_p' num2str(probeID) '_MUthreshold.mat'],'MUthresholding');
 %documentation
 id.MUthreshold.date{probeID}=date;
 id.MUthreshold.name{probeID}=name;
+id.MUthreshold.settings{probeID}.scaleFactor = threshlevel;
 
 save([basename '_id.mat'],'id'); %this will also add id.sampleFreq if neeed
     
