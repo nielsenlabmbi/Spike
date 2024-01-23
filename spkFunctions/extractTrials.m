@@ -34,7 +34,13 @@ physname=fullfile(physpath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '
 DigiFile = fopen(physname);
 fileinfo = dir(physname);
 digiData = fread(DigiFile, (fileinfo.bytes)/2, 'uint16');
+
+%there are some files with an odd offset in the digital inputs - fix by
+%subtracting the first number
+digiData=digiData-digiData(1);
+
 dDigital = diff(digiData);
+fclose(DigiFile);
 
 %non-zero entries in dDigital are events
 trialInfo.eventTimes=find(dDigital~=0)+1;
