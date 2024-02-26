@@ -91,6 +91,19 @@ for u=1:length(unitIdx)
     end
 end
 
+%compute means and standard error per condition (baseline corrected)
+condId=unique(trialInfo.triallist);
+for i=1:length(condId)
+    %find trials
+    idx=find(trialInfo.triallist==condId(i));
+
+    for u=1:length(unitIdx)
+        SU(u).avgRateCond(i)=mean(SU(u).stimFrate(idx)-SU(u).baseFrate(idx));
+        SU(u).semRateCond(i)=std(SU(u).stimFrate(idx)-SU(u).baseFrate(idx))/sqrt(length(idx));
+    end
+end
+
+
 %generate structure with general info, including condition info
 SUinfo.eventType=eventType;
 SUinfo.eventId=eId;
