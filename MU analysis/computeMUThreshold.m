@@ -9,7 +9,7 @@ function computeMUThreshold(physpath,animal,unit,exp,probeID,threshlength,thresh
 % expID - experiment ID (string)
 % probeID - probe number to process (number)
 % threshlength - length of intervals used for threshold computations (in
-% sec)
+% sec); if left empty set to a quarter of the file
 % threshlevel - scale factor for threshold (thresholds will be set to
 % -threshlevel x automatically determined level)
 % name - initials
@@ -49,10 +49,14 @@ MUthresholding.badChannels=zeros(1,nChannels);
 
 %samples and time points for threshold - threshold is fixed throughout recording period, so
 %use 3 segments to figure out level, one at start one in middle, one at end
-MUthresholding.threshlength=threshlength;
+if isempty(threshlength)
+    MUthresholding.threshlength=(samples/id.sampleFreq)*.25;
+else
+    MUthresholding.threshlength=threshlength;
+end
 MUthresholding.offsetSamples=400; %nr of samples to drop at start because of filtering artefact 
 
-baseSample=round(threshlength*id.sampleFreq);
+baseSample=round(MUthresholding.threshlength*id.sampleFreq);
 startSample(1)=0;
 startSample(2)=samples/2;
 startSample(3)=samples-baseSample;
