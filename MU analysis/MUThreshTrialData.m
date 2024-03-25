@@ -80,12 +80,12 @@ for u=1:length(chidx)
         MUThresh(u).spktimes{i}=(MUspkMerge.spktimes(sidx)-eTime)/id.sampleFreq*1000;
         MUThresh(u).Nspk(i)=length(sidx);
         
-        bidx=find(MUspkMerge.detCh==chidx(u)  & ...
+        bidx=find(MUspkMerge.detChSort==chidx(u)  & ...
             MUspkMerge.spktimes>eTime-baseSample & MUspkMerge.spktimes<eTime);
         MUThresh(u).baseNspk(i)=length(bidx);
         MUThresh(u).baseFrate(i)=length(bidx)/baseTime;
        
-        stidx=find(MUspkMerge.detCh==chidx(u) & ...
+        stidx=find(MUspkMerge.detChSort==chidx(u) & ...
             MUspkMerge.spktimes>eTime & MUspkMerge.spktimes<eTime+stimSample);
         MUThresh(u).stimNspk(i)=length(stidx);
         MUThresh(u).stimFrate(i)=length(stidx)/stimTime;
