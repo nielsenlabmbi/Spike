@@ -102,5 +102,9 @@ MUThreshInfo.domval=trialInfo.domval;
 MUThreshInfo.blankId=trialInfo.blankId;
 MUThreshInfo.triallist=trialInfo.triallist;
 
+trialExclude=MUThreshFlagOutlier(MUThresh,MUThreshInfo,0);
+MUThreshInfo.trialExclude = trialExclude;
+
+
 save([basename '_p' num2str(probeId) '_MUThreshTrial.mat'],'MUThresh','MUThreshInfo');
 
