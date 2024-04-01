@@ -71,7 +71,7 @@ end
 for u=1:length(unitIdx)
     %base info
     SU(u).unitId=unitIdx(u);
-    SU(u).unitClass=spkSort.unitinfo{u};
+    SU(u).unitClass=spkSort.unitinfo{unitIdx(u)};
     
     
     for i=1:length(eventIdx)
