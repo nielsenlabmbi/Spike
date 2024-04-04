@@ -14,8 +14,12 @@ trialSum=mean(spkMat,2);
 
 
 %find outliers
-outProbe=isoutlier(trialSum);
-% outProbe = trialSum > mean(trialSum)+(2*std(trialSum));
+nScl = 3;
+scale = -1/(sqrt(2)*erfcinv(3/2));
+scaledMad = scale*median(abs(trialSum-median(trialSum)));
+% outProbe = isoutlier(trialSum);
+% outProbe = trialSum > mean(trialSum)+(nScl*std(trialSum));
+outProbe = trialSum > median(trialSum)+(nScl*scaledMad);
 trialExclude=outProbe(:); %outliers = 1
 
 %plot if selected
@@ -42,15 +46,13 @@ if plotOpt==1
     xlabel('Sum Ch')
 
     xline(mean(trialSum),'c-','LineWidth',2)
-    xline(mean(trialSum)+(1*std(trialSum)),'c--')
-    xline(mean(trialSum)+(2*std(trialSum)),'c--')
-    xline(mean(trialSum)+(3*std(trialSum)),'c--')
+    for s = 1:nScl
+        xline(mean(trialSum)+(s*std(trialSum)),'c--')
+    end
     xline(median(trialSum),'m-','LineWidth',2)
-    scale = -1/(sqrt(2)*erfcinv(3/2));
-    scaledMad = scale*median(abs(trialSum-median(trialSum)));
-    xline(median(trialSum)+(1*scaledMad),'m--')
-    xline(median(trialSum)+(2*scaledMad),'m--')
-    xline(median(trialSum)+(3*scaledMad),'m--')
+    for s = 1:nScl
+        xline(median(trialSum)+(s*scaledMad),'m--')
+    end
 
     if ~isempty(idxOut)
         hold on
