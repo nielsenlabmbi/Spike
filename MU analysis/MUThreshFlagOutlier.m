@@ -14,7 +14,7 @@ trialSum=mean(spkMat,2);
 
 
 %find outliers
-nScl = 3;
+nScl = 5;
 scale = -1/(sqrt(2)*erfcinv(3/2));
 scaledMad = scale*median(abs(trialSum-median(trialSum)));
 % outProbe = isoutlier(trialSum);
