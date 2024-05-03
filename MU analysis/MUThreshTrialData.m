@@ -92,6 +92,18 @@ for u=1:length(chidx)
     end
 end
 
+%compute means and standard error per condition (baseline corrected)
+condId=unique(trialInfo.triallist);
+for i=1:length(condId)
+    %find trials
+    idx=find(trialInfo.triallist==condId(i));
+
+    for u=1:length(unitIdx)
+        MUThresh(u).avgRateCond(i)=mean(MUThresh(u).stimFrate(idx)-MUThresh(u).baseFrate(idx));
+        MUThresh(u).semRateCond(i)=std(MUThresh(u).stimFrate(idx)-MUThresh(u).baseFrate(idx))/sqrt(length(idx));
+    end
+end
+
 %generate structure with general info, including condition info
 MUThreshInfo.eventType=eventType;
 MUThreshInfo.eventId=eId;
