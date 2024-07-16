@@ -128,8 +128,13 @@ ylabel('cumulative % explained var')
 axis tight
 
 subplot(2,2,4);hold on
-id = randsample(size(PC.wvfrms,1),5000);
-plot(PC.wvfrms(id,:)','LineWidth',1)
+if size(PC.wvfrms,1)<1000
+    plot(PC.wvfrms','LineWidth',1)
+else
+    nRnd = 1000;
+    id = randsample(size(PC.wvfrms,1),nRnd);
+    plot(PC.wvfrms(id,:)','LineWidth',1)
+end
 plot(PC.mu,'Color','k','LineWidth',2)
 axis tight
 

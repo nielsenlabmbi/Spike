@@ -26,49 +26,53 @@ mu = PC.mu;
 load(fullfile(dataFold,animalID,fileBase,'spikeFiles',[fileBase '_j' num2str(job) '_p' num2str(probeID) '_spkinfo.mat']))
 load(fullfile(dataFold,animalID,fileBase,'spikeFiles',[fileBase '_j' num2str(job) '_p' num2str(probeID) '_spike.mat']))
 
-nSpksJob = length(spk.spkTimesDet);
-jobWvfrms = zeros(nSpksJob,length(mu));
-% nbrWvfrms{nSpksJob,1} = [];
-% nbrWvfrmsA{nSpksJob,1} = [];
-% PC1All = cell(size(nbrWvfrms));
-% PC2All = cell(size(nbrWvfrms));
-% PC3All = cell(size(nbrWvfrms));
+if isfield(spk,'spkTimesDet')
 
-s=0;
-for ch = 1:length(spikeData) %loop through all channels for this job and collect waveforms in variable 'jobWvfrms'
-
-    if isnan(spikeData(ch).spikeTimes) %if there aren't any spikes on this channel (in this job) move onto the next
-        continue
+    nSpksJob = length(spk.spkTimesDet);
+    jobWvfrms = zeros(nSpksJob,length(mu));
+    % nbrWvfrms{nSpksJob,1} = [];
+    % nbrWvfrmsA{nSpksJob,1} = [];
+    % PC1All = cell(size(nbrWvfrms));
+    % PC2All = cell(size(nbrWvfrms));
+    % PC3All = cell(size(nbrWvfrms));
+    
+    s=0;
+    for ch = 1:length(spikeData) %loop through all channels for this job and collect waveforms in variable 'jobWvfrms'
+    
+        if isnan(spikeData(ch).spikeTimes) %if there aren't any spikes on this channel (in this job) move onto the next
+            continue
+        end
+        nSpkCh = length(spikeData(ch).spikeTimes); %number of spikes that occur on this channel
+        
+        jobWvfrms(1+s:nSpkCh+s,:) = spikeData(ch).Wvfrms(:,:,1); %fill in the next 'nSpkCh' rows of 'jobWvfrms' with the spikes from this channel
+        
+        s = s+nSpkCh; %increase counter by the number of spikes you've filled in
+    
+    %     for spike = 1:nSpkCh
+    %         s=s+1;
+    %         nbrWvfrms{s} = squeeze(spikeData(ch).Wvfrms(spike,:,:))';
+    %         nbrWvfrmsA{s} = alignWvs(nbrWvfrms{s});
+    %         
+    %         spk.PC1All{s} = (nbrWvfrmsA{s}-mu)*coeff(:,1);
+    %         spk.PC2All{s} = (nbrWvfrmsA{s}-mu)*coeff(:,2);
+    %         spk.PC3All{s} = (nbrWvfrmsA{s}-mu)*coeff(:,3);
+    %     end
+        
     end
-    nSpkCh = length(spikeData(ch).spikeTimes); %number of spikes that occur on this channel
     
-    jobWvfrms(1+s:nSpkCh+s,:) = spikeData(ch).Wvfrms(:,:,1); %fill in the next 'nSpkCh' rows of 'jobWvfrms' with the spikes from this channel
+    if isempty(jobWvfrms)
+        disp(['job ' num2str(job) ' has no spikes'])
+    else
+        score = (jobWvfrms-mu)*coeff;
     
-    s = s+nSpkCh; %increase counter by the number of spikes you've filled in
-
-%     for spike = 1:nSpkCh
-%         s=s+1;
-%         nbrWvfrms{s} = squeeze(spikeData(ch).Wvfrms(spike,:,:))';
-%         nbrWvfrmsA{s} = alignWvs(nbrWvfrms{s});
-%         
-%         spk.PC1All{s} = (nbrWvfrmsA{s}-mu)*coeff(:,1);
-%         spk.PC2All{s} = (nbrWvfrmsA{s}-mu)*coeff(:,2);
-%         spk.PC3All{s} = (nbrWvfrmsA{s}-mu)*coeff(:,3);
-%     end
+        spk.PC1Det = score(:,1)'; %store projections of spikes in first 3 PCs as fields in structure 'spk'
+        spk.PC2Det = score(:,2)';
+        spk.PC3Det = score(:,3)';
     
-end
+        cd([dataFold '/' animalID '/' fileBase '/SpikeFiles'])
+        save([fileBase '_j' num2str(job) '_p' num2str(probeID) '_spkinfo.mat'],'spk')
+    end
 
-if isempty(jobWvfrms)
-    disp(['job ' num2str(job) ' has no spikes'])
-else
-    score = (jobWvfrms-mu)*coeff;
-
-    spk.PC1Det = score(:,1)'; %store projections of spikes in first 3 PCs as fields in structure 'spk'
-    spk.PC2Det = score(:,2)';
-    spk.PC3Det = score(:,3)';
-
-    cd([dataFold '/' animalID '/' fileBase '/SpikeFiles'])
-    save([fileBase '_j' num2str(job) '_p' num2str(probeID) '_spkinfo.mat'],'spk')
 end
 
 end
