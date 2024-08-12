@@ -218,11 +218,11 @@ if MUflag==0
 else
     outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(JobID) '_p' num2str(probeID)  '_MUspike.mat']); 
 end
-matOut=matfile(outname,'Writable',true);
+%matOut=matfile(outname,'Writable',true);
 
 %add settings and original file name for record keeping
-matOut.settings=settings;
-matOut.expname=expname;
+%matOut.settings=settings;
+%matOut.expname=expname;
 
 
 for i=1:size(Data,2)
@@ -233,10 +233,10 @@ for i=1:size(Data,2)
         %add it to the matfile object later; we're only extracting spike
         %data here, rest will happen in next file to make it easier to add
         %new properties
-        spikeData = struct;
+        spikeDataOut = struct;
         
         Times = find(Spikes(:,i)>0); % Find coordinates where spikes occurred
-        spikeData.spikeTimes=Times+firstSample;
+        spikeDataOut.spikeTimes=Times+firstSample;
         
         Nspikes=length(Times);
         %continue only if there are spikes
@@ -252,35 +252,40 @@ for i=1:size(Data,2)
             %the first entry in the waveform matrices
             distCh=sqrt((id.probes(probeID).x-id.probes(probeID).x(i)).^2+(id.probes(probeID).z-id.probes(probeID).z(i)).^2);
             [distOrg,distIdx]=sort(distCh);
-            spikeData.channelIds=distIdx(distOrg<=settings.spikeRadius); %add offset back to get to correct channels
-            Nch=length(spikeData.channelIds);
+            spikeDataOut.channelIds=distIdx(distOrg<=settings.spikeRadius); %add offset back to get to correct channels
+            Nch=length(spikeDataOut.channelIds);
 
-            wv=Data([-settings.spikeSamples(1):settings.spikeSamples(2)]+Times,spikeData.channelIds);
+            wv=Data([-settings.spikeSamples(1):settings.spikeSamples(2)]+Times,spikeDataOut.channelIds);
             
             Ntime=sum(settings.spikeSamples)+1;
-            spikeData.rawWvfrms=reshape(wv,[Nspikes Ntime Nch]); %dimensions: spike x timepoints x channel
+            spikeDataOut.rawWvfrms=reshape(wv,[Nspikes Ntime Nch]); %dimensions: spike x timepoints x channel
             
             %normalize by baseline
-            spikeData.Wvfrms=spikeData.rawWvfrms-mean(spikeData.rawWvfrms(:,1:settings.spikeSamples(1),:),2);
+            spikeDataOut.Wvfrms=spikeDataOut.rawWvfrms-mean(spikeDataOut.rawWvfrms(:,1:settings.spikeSamples(1),:),2);
             
             %save
-            matOut.spikeData(1,i)=spikeData;
+            %matOut.spikeData(1,i)=spikeData;
+            spikeData(1,i)=spikeDataOut;
         else
-            spikeData.spikeTimes=NaN;
-            spikeData.channelIds=NaN;
-            spikeData.rawWvfrms=NaN;
-            spikeData.Wvfrms=NaN;
-            matOut.spikeData(1,i)=spikeData;
+            spikeDataOut.spikeTimes=NaN;
+            spikeDataOut.channelIds=NaN;
+            spikeDataOut.rawWvfrms=NaN;
+            spikeDataOut.Wvfrms=NaN;
+            %matOut.spikeData(1,i)=spikeData;
+            spikeData(1,i)=spikeDataOut;
             
         end
     else
-        spikeData.spikeTimes=NaN;
-        spikeData.channelIds=NaN;
-        spikeData.rawWvfrms=NaN;
-        spikeData.Wvfrms=NaN;
-        matOut.spikeData(1,i)=spikeData;
+        spikeDataOut.spikeTimes=NaN;
+        spikeDataOut.channelIds=NaN;
+        spikeDataOut.rawWvfrms=NaN;
+        spikeDataOut.Wvfrms=NaN;
+        %matOut.spikeData(1,i)=spikeData;
+        spikeData(1,i)=spikeDataOut;
     end
 end
+
+save(outname,'spikeData','settings','expname','-v7.3','-nocompression');
 
 
 %for job 0, add info to id file for bookkeeping
