@@ -398,7 +398,7 @@ else
     outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_MUspkinfo']);
 end
 
-save(outname,'spk','-v7.3');
+save(outname,'spk','-v7.3','-nocompression');
 
 
 %add to id file for job 0 for bookkeeping
