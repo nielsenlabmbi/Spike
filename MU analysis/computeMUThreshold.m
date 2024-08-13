@@ -1,9 +1,9 @@
-function computeMUThreshold(physpath,animal,unit,exp,probeID,threshlength,threshlevel,name,copyToZ)
+function computeMUThreshold(physpath,animal,unit,exp,probeID,threshlength,threshlevel,name,copyToZ,varargin)
 %compute the threshold for automatic MU extraction, save in separate file
 %will add sampleFreq to id if not done yet; will add SpikeFiles folder if
 %not done yet
 %input:
-% expFolder - experiment folder
+% physpath - experiment folder
 % animalID - animal ID (string)
 % unitID - unit ID (string)
 % expID - experiment ID (string)
@@ -14,6 +14,8 @@ function computeMUThreshold(physpath,animal,unit,exp,probeID,threshlength,thresh
 % -threshlevel x automatically determined level)
 % name - initials
 % copyToZ - copy id file to Z
+% varargin: allows to add an addition to the file name (to distinguish
+% different versions)
 
 
 
@@ -86,12 +88,22 @@ end
 MUthresholding.thresholds=-threshlevel*mean(chthresh,1);
 MUthresholding.threshlevel=threshlevel;
 
-save([basename '_p' num2str(probeID) '_MUthreshold.mat'],'MUthresholding');
+if ~isempty(varargin)
+    save([basename '_p' num2str(probeID) '_MUthreshold_' varargin{1} '.mat'],'MUthresholding');
+else
+    save([basename '_p' num2str(probeID) '_MUthreshold.mat'],'MUthresholding');
+end
 
-%documentation
-id.MUthreshold.date{probeID}=date;
-id.MUthreshold.name{probeID}=name;
-id.MUthreshold.settings{probeID}.scaleFactor = threshlevel;
+%documentation - add new fields if varargin set to distinguish versions
+if isempty(varargin)
+    id.MUthreshold.date{probeID}=date;
+    id.MUthreshold.name{probeID}=name;
+    id.MUthreshold.settings{probeID}.scaleFactor = threshlevel;
+else
+    id.MUthreshold.(varargin{1}).date{probeID}=date;
+    id.MUthreshold.(varargin{1}).name{probeID}=name;
+    id.MUthreshold.(varargin{1}).settings{probeID}.scaleFactor = threshlevel;
+end
 
 save([basename '_id.mat'],'id'); %this will also add id.sampleFreq if neeed
     
@@ -99,7 +111,13 @@ if copyToZ==1
     expname=[animal '_u' unit '_' exp];
     zbase='Z:\EphysNew\processedSpikes';
     save(fullfile(zbase,animal,expname,[expname '_id.mat']),'id');
-    save(fullfile(zbase,animal,expname,[expname '_p' num2str(probeID) '_MUthreshold.mat']),'MUthresholding');
+
+    if ~isempty(varargin)
+        save(fullfile(zbase,animal,expname,[expname '_p' num2str(probeID) '_MUthreshold_' varargin{1} '.mat']),'MUthresholding');
+    else
+        save(fullfile(zbase,animal,expname,[expname '_p' num2str(probeID) '_MUthreshold.mat']),'MUthresholding');
+    end
+    
 end
 
 %add SpikeFiles folder if necessary
