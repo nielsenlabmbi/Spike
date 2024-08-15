@@ -1,4 +1,4 @@
-function MUThreshTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTime,stimTime)
+function MUThreshTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTime,stimTime,varargin)
 %this function extracts spike times for MU spikes (threshold but not sorted) 
 %for each trial, also computes mean number of spikes
 %and rates in windows before/after event
@@ -13,6 +13,9 @@ function MUThreshTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTi
 %eId: either decimal number for trigger event, or channel number
 %baseTime: time before event to include (in s)
 %stimTime: time after event to include (in s)
+%stimTime: time after event to include (in s)
+%varargin: allows to add an addition to the file name (to distinguish
+%different versions)
 %
 %output:
 %structure MUThresh, one entry per channel
@@ -98,7 +101,7 @@ for i=1:length(condId)
     %find trials
     idx=find(trialInfo.triallist==condId(i));
 
-    for u=1:length(unitIdx)
+    for u=1:length(chidx)
         MUThresh(u).avgRateCond(i)=mean(MUThresh(u).stimFrate(idx)-MUThresh(u).baseFrate(idx));
         MUThresh(u).semRateCond(i)=std(MUThresh(u).stimFrate(idx)-MUThresh(u).baseFrate(idx))/sqrt(length(idx));
     end
@@ -117,6 +120,11 @@ MUThreshInfo.triallist=trialInfo.triallist;
 trialExclude=MUThreshFlagOutlier(MUThresh,MUThreshInfo,0);
 MUThreshInfo.trialExclude = trialExclude;
 
+if ~isempty(varargin)
+    save([basename '_p' num2str(probeId) '_MUThreshTrial_' varargin{1} '.mat'],'MUThresh','MUThreshInfo');
+else
+    save([basename '_p' num2str(probeId) '_MUThreshTrial.mat'],'MUThresh','MUThreshInfo');
+end
 
-save([basename '_p' num2str(probeId) '_MUThreshTrial.mat'],'MUThresh','MUThreshInfo');
+
 

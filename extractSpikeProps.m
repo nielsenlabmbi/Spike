@@ -1,4 +1,4 @@
-function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUflag,jobID)
+function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUflag,jobID,varargin)
 % extract properties for spikes (one job file at a time)
 % input parameters:
 % expFolder - base folder for experiments (string)
@@ -10,7 +10,8 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,
 % copyToZ - copy id file to Z?
 % MUflag - 0 normal, 1 use MUspike files
 % jobID - job ID of raw spike file to process (number)
-
+% varargin -  option: 'id'+id (avoids loading the id file for batch processing); 
+%             
 %
 % output parameters:
 % structure spk with fields (each is a vector/matrix with entries for each
@@ -47,10 +48,21 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,
 %
 % also updates the id file
 
+% deal with varargin
+loadId=1;
+if ~isempty(varargin)
+    idx=find(strcmp(varargin,'id'));
+    if ~isempty(idx)
+        loadId=0;
+        id=varargin{idx+1};
+    end
+end
 
 %we need the id file for probe settings
 expname=[animalID '_u' unitID '_' expID];
-load(fullfile(expFolder,animalID,expname,[expname '_id'])); %generates id
+if loadId==1
+    load(fullfile(expFolder,animalID,expname,[expname '_id'])); %generates id
+end
 
 %compute total channel number
 nChannels=sum([id.probes.nChannels]);

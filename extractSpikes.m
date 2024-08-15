@@ -13,6 +13,9 @@ function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUfl
 % overlap between files
 % parts - number of segments to divide the data file into
 % JobID - current segment to process; starts with 0
+% varargin -  2 options: 'id'+id (avoids loading the id file for batch processing); 
+%             'tSuffix'+suffix for threshold file, as in threshold_XXX (so multiple versions can
+%             exist)
 
 % output (saved in matlab file)
 % spikeData - structure with fields (one per detection channel)
@@ -35,27 +38,45 @@ settings.spikeRadius=50; %distance radius over which to extract spike waveforms
 settings.offsetSamples=800; %this used to be partsOverlapSamples; overlap between files (increased to avoid filtering artefact)
 settings.legacyFlag=legacyFlag; %for bookkeeping
 
+%% deal with varargin
+% possibilities for varargin: addition to threshold file, id 
+% provided
+tname='threshold';
+loadId=1;
+if ~isempty(varargin)
+    idx=find(strcmp(varargin,'tSuffix'));
+    if ~isempty(idx)
+        tname=['threshold_' varargin{idx+1}];
+    end
+    idx=find(strcmp(varargin,'id'));
+    if ~isempty(idx)
+        loadId=0;
+        id=varargin{idx+1};
+    end
+end
+
 %% generate basic info
+
 %load threshold and id data
 expname=[animalID '_u' unitID '_' expID];
+
+
+
 if MUflag==0
-    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_threshold.mat'])); %generates thresholding
+    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_' tname '.mat'])); %generates thresholding
 else
-    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_MUthreshold.mat'])); %generates MUthresholding
+    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_MU' tname '.mat'])); %generates MUthresholding
     thresholding=MUthresholding;
 end
-load(fullfile(expFolder,animalID,expname,[expname '_id.mat'])); %generates id
+if loadId==1
+    load(fullfile(expFolder,animalID,expname,[expname '_id.mat'])); %generates id
+end
 
 %compute total channel number
 nChannels=sum([id.probes.nChannels]);
 
 %get file size for amplifier file
-if nargin==11
-    ampFolder=expFolder;
-else
-    ampFolder=varargin{1};
-end
-filename=fullfile(ampFolder,animalID,expname,[expname '_amplifier.dat']);
+filename=fullfile(expFolder,animalID,expname,[expname '_amplifier.dat']);
 fileinfo = dir(filename);
 samples = fileinfo.bytes/(2*nChannels); % Number of samples in amplifier data file
 samplesPerJob = ceil(samples/parts); % Number of samples to allocate to each of the 200 jobs
