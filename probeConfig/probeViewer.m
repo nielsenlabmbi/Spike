@@ -14,7 +14,7 @@ if exist(['probeConfig_' probeType],'file')
     end
 
     ylabel('Depth (0=deep)')
-    pbaspect([1 5 1])
+    %pbaspect([1 5 1])
     title(probeType)
 else
     disp('Incorrect type selected')
