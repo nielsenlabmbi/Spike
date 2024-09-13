@@ -26,6 +26,7 @@ wb=waitbar(0,'Merging MUspkinfo');
 
 expname=[animalID '_u' unitID '_' expID];
 
+iniFile=0; %just in case the first file is empty
 for i=startID:stopID
     waitbar((i-startID)/(stopID-startID),wb);
    
@@ -34,22 +35,26 @@ for i=startID:stopID
     load(fname); %generates spk
     
     %output
-    if i==startID
-        idx=find(spk.flagDuplicate==0);
-        MUspkMerge.spktimes=spk.spkTimesDet(idx);
-        MUspkMerge.detCh=spk.detCh(idx);
-        MUspkMerge.detChSort=spk.detChSort(idx);
-        MUspkMerge.NDuplicate=spk.NDuplicate (idx);
-        MUspkMerge.jobId=ones(size(idx))*i;
-    else
-        idx=find(spk.flagDuplicate==0);
-        MUspkMerge.spktimes=[MUspkMerge.spktimes spk.spkTimesDet(idx)];
-        MUspkMerge.detCh=[MUspkMerge.detCh spk.detCh(idx)];
-        MUspkMerge.detChSort=[MUspkMerge.detChSort spk.detChSort(idx)];
-        MUspkMerge.NDuplicate=[MUspkMerge.NDuplicate spk.NDuplicate(idx)];
-        MUspkMerge.jobId=[MUspkMerge.jobId ones(size(idx))*i];
+    if isfield(spk,'flagDuplicate') %necessary to guard against empty files
+        if iniFile==0
+            idx=find(spk.flagDuplicate==0);
+            MUspkMerge.spktimes=spk.spkTimesDet(idx);
+            MUspkMerge.detCh=spk.detCh(idx);
+            MUspkMerge.detChSort=spk.detChSort(idx);
+            MUspkMerge.NDuplicate=spk.NDuplicate (idx);
+            MUspkMerge.jobId=ones(size(idx))*i;
+
+            iniFile=1;
+        else
+            idx=find(spk.flagDuplicate==0);
+            MUspkMerge.spktimes=[MUspkMerge.spktimes spk.spkTimesDet(idx)];
+            MUspkMerge.detCh=[MUspkMerge.detCh spk.detCh(idx)];
+            MUspkMerge.detChSort=[MUspkMerge.detChSort spk.detChSort(idx)];
+            MUspkMerge.NDuplicate=[MUspkMerge.NDuplicate spk.NDuplicate(idx)];
+            MUspkMerge.jobId=[MUspkMerge.jobId ones(size(idx))*i];
+        end
+        clear spk;
     end
-    clear spk;
 end
 
 save(fullfile(filepath,animalID,expname,[expname '_p' num2str(probeID) '_MUspkMerge']),'MUspkMerge'); 
