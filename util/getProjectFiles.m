@@ -27,6 +27,7 @@ data=select(connSQL,selquery);
 if isempty(data)
     errordlg('Project does not exist!','Read error');
     projectOut=table;
+    close(connSQL);
     return;
 end
 
