@@ -24,6 +24,12 @@ connSQL=database('ephysDatabase','','');
 selquery=['SELECT * FROM tblproject WHERE projName="' project '"'];
 data=select(connSQL,selquery);
 
+if isempty(data)
+    errordlg('Project does not exist!','Read error');
+    projectOut=table;
+    return;
+end
+
 %return the relevant information
 projectOut=table;
 
