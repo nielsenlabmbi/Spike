@@ -1,4 +1,4 @@
-function MUThreshTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTime,stimTime,varargin)
+function MUThreshTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTime,stimTime,copyToZ,varargin)
 %this function extracts spike times for MU spikes (threshold but not sorted) 
 %for each trial, also computes mean number of spikes
 %and rates in windows before/after event
@@ -14,6 +14,7 @@ function MUThreshTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTi
 %baseTime: time before event to include (in s)
 %stimTime: time after event to include (in s)
 %stimTime: time after event to include (in s)
+%copyToZ: copy file to Z
 %varargin: allows to add an addition to the file name (to distinguish
 %different versions)
 %
@@ -122,8 +123,16 @@ MUThreshInfo.trialExclude = trialExclude;
 
 if ~isempty(varargin)
     save([basename '_p' num2str(probeId) '_MUThreshTrial_' varargin{1} '.mat'],'MUThresh','MUThreshInfo');
+    if copyToZ==1
+        save(fullfile('Z:\EphysNew\processedSpikes',animal,[animal '_u' unit '_' exp],...
+            [animal '_u' unit '_' exp '_p' num2str(probeId) '_MUThreshTrial_' varargin{1} '.mat']),'MUThresh','MUThreshInfo');
+    end
 else
     save([basename '_p' num2str(probeId) '_MUThreshTrial.mat'],'MUThresh','MUThreshInfo');
+    if copyToZ==1
+        save(fullfile('Z:\EphysNew\processedSpikes',animal,[animal '_u' unit '_' exp],...
+            [animal '_u' unit '_' exp '_p' num2str(probeId) '_MUThreshTrial.mat']),'MUThresh','MUThreshInfo');
+    end
 end
 
 

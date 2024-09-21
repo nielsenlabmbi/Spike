@@ -20,7 +20,13 @@ function extractTrials(physpath,anapath,outpath,animal,unit,exp)
 %eventCh: same as eventId, but turned into on/off for 3 digital channels
 
 %load analyzer and get all releveant info
-load(fullfile(anapath,animal,[animal '_u' unit '_' exp '.analyzer']),'-mat');
+%accomodate using storage on z (no subfolders under animal) and local
+%storage in subfolders
+if ~isfolder(fullfile(anapath, animal,[animal '_u' unit '_' exp]))
+    load(fullfile(anapath,animal,[animal '_u' unit '_' exp '.analyzer']),'-mat');
+else
+    load(fullfile(anapath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '_' exp '.analyzer']),'-mat');
+end
 
 %run helper functions on analyzer
 [dom,domval,blankId] = getdomainvalue(Analyzer);

@@ -1,4 +1,4 @@
-function SUTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTime,stimTime,varargin)
+function SUTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTime,stimTime,copyToZ,varargin)
 %this function extracts spike times for identifed SU and MU spikes (noise
 %and none are excluded) for each trial, also computes mean number of spikes
 %and rates in windows before/after event
@@ -13,6 +13,7 @@ function SUTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTime,sti
 %eId: either decimal number for trigger event, or channel number
 %baseTime: time before event to include (in s)
 %stimTime: time after event to include (in s)
+%copyToZ: copy file to Z
 %varargin: allows to add an addition to the file name (to distinguish
 %different versions)
 %
@@ -118,6 +119,14 @@ SUinfo.triallist=trialInfo.triallist;
 
 if ~isempty(varargin)
     save([basename '_p' num2str(probeId) '_SUTrial_' varargin{1} '.mat'],'SU','SUinfo');
+    if copyToZ==1
+        save(fullfile('Z:\EphysNew\processedSpikes',animal,[animal '_u' unit '_' exp],...
+            [animal '_u' unit '_' exp '_p' num2str(probeId) '_SUTrial_' varargin{1} '.mat']),'SU','SUinfo');
+    end
 else
     save([basename '_p' num2str(probeId) '_SUTrial.mat'],'SU','SUinfo');
+    if copyToZ==1
+        save(fullfile('Z:\EphysNew\processedSpikes',animal,[animal '_u' unit '_' exp],...
+            [animal '_u' unit '_' exp '_p' num2str(probeId) '_SUTrial.mat']),'SU','SUinfo');
+    end
 end
