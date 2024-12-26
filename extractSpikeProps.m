@@ -10,7 +10,9 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,
 % copyToZ - copy id file to Z?
 % MUflag - 0 normal, 1 use MUspike files
 % jobID - job ID of raw spike file to process (number)
-% varargin -  option: 'id'+id (avoids loading the id file for batch processing); 
+% varargin -  2 options: 'id'+id (avoids loading the id file for batch processing); 
+%             'tSuffix'+suffix for Spikes directory (to allow multiple
+%             verions)
 %             
 %
 % output parameters:
@@ -46,17 +48,27 @@ function extractSpikeProps(expFolder,animalID,unitID,expID,probeID,name,copyToZ,
 % marked as the maximum/winning event
 % - duplicateMxIdx: index into spkTimesDet etc for the winning event
 %
-% also updates the id file
+% generates extractSpkProp file with info
 
-% deal with varargin
+
+%% deal with varargin
 loadId=1;
+tSuffix='';
+spkFolder='SpikeFiles';
+
 if ~isempty(varargin)
     idx=find(strcmp(varargin,'id'));
     if ~isempty(idx)
         loadId=0;
         id=varargin{idx+1};
     end
+    idx=find(strcmp(varargin,'tSuffix'));
+    if ~isempty(idx)
+        tSuffix=varargin{idx+1};
+        spkFolder=[spkFolder '_' tSuffix];
+    end
 end
+
 
 %we need the id file for probe settings
 expname=[animalID '_u' unitID '_' expID];
@@ -76,10 +88,13 @@ spkWindowI=15; %window in which to find minimum in interpolated data (scaling up
 %open matfile with spike data
 %generates spikeData and settings
 if MUflag==0
-    load(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spike']));
+    fileIn=fullfile(expFolder,animalID,expname,spkFolder,[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spike']);
+
 else
-    load(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_MUspike']));
+    fileIn=fullfile(expFolder,animalID,expname,spkFolder,[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_MUspike']);
 end
+load(fileIn);
+
 %samples per spike waveform
 spikeSamples=settings.spikeSamples;
 Nsample=sum(spikeSamples)+1;
@@ -396,63 +411,51 @@ if isfield(spk,'spkTimesDet')
         end %if sum
     end %for ch
 end
-%add expname just in case, add other parameters
-spk.expname=expname;
-spk.probeId=probeID;
-spk.spkWindow=spkWindow;
-spk.spkTol=spkTol; 
-spk.spkInterp=spkInterp; 
-spk.spkWindowI=spkWindowI; 
+%add corresponding spike file name
+spk.fileIn=fileIn;
+
 
 if MUflag==0
-    outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkinfo']);
+    outname=fullfile(expFolder,animalID,expname,spkFolder,[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkinfo']);
 else
-    outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_MUspkinfo']);
+    outname=fullfile(expFolder,animalID,expname,spkFolder,[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_MUspkinfo']);
 end
 
 save(outname,'spk','-v7.3','-nocompression');
 
 
-%add to id file for job 0 for bookkeeping
+%generate extractSpkProp file for job 0
 if jobID==0
+    extractSpkProp.date=date;
+    extractSpkProp.name=name;
+    extractSpkProp.probeNr=probeID;
+    extractSpkProp.exptId=expname;
+    extractSpkProp.suffix=tSuffix;
+    extractSpkProp.MUflag=MUflag;
+    extractSpkProp.spkWindow=spkWindow;
+    extractSpkProp.spkTol=spkTol;
+    extractSpkProp.spkInterp=spkInterp;
+    extractSpkProp.spkWindowI=spkWindowI;
 
     if MUflag==0
-        %need to clean up previous versions that didn't index according to
-        %probe
-        if isfield(id,'extractSpikeProps')
-             if ~iscell(id.extractSpikeProps.date) %name, date go together, so only do this once
-                 %if there is only one probe, or only one probe has ever been thresholded
-                %simply delete since it's now obsolete
-                if length(id.probes)==1 || sum(id.threshold.processedProbe)==1
-                    id=rmfield(id,'extractSpikeProps');
-                else %try to keep information, using date info
-                    t1=datetime([id.threshold.date]);
-                    t2=datetime(id.extractSpikeProps.date);
-                    [~,oldProbe]=min(t2-t1); %only returns 1 value
-
-                    tmpId=id.extractSpikeProps;
-                    id=rmfield(id,'extractSpikeProps');
-
-                    id.extractSpikeProps.date{oldProbe}=tmpId.date;
-                    id.extractSpikeProps.name{oldProbe}=tmpId.name;
-                end
-       
-            end
-        end
-
-        id.extractSpikeProps.name{probeID}=name;
-        id.extractSpikeProps.date{probeID}=date;
+        infoname=[expname '_p' num2str(probeID) '_extractSpkProp'];
     else
-        id.MUextractSpikeProps.name{probeID}=name;
-        id.MUextractSpikeProps.date{probeID}=date;
+        infoname=[expname '_p' num2str(probeID) '_MUextractSpkProp'];
     end
-    save(fullfile(expFolder,animalID,expname,[expname '_id']),'id');
+    if ~isempty(tSuffix)
+        infoname=[infoname '_' tSuffix '.mat'];
+    else
+        infoname=[infoname '.mat'];
+    end
+
+    save(fullfile(expFolder,animalID,expname,infoname),'extractSpkProp');
+    
     if copyToZ==1
         zbase='Z:\EphysNew\processedSpikes';
-        save(fullfile(zbase,animalID,expname,[expname '_id']),'id');
+        save(fullfile(zbase,animalID,expname,infoname),'extractSpkProp'); 
     end
-end
 
+end
 
 disp(['extractSpikeProps job ID ' num2str(jobID) ' done.'])
 

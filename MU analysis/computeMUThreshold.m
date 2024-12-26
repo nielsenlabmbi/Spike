@@ -86,7 +86,18 @@ for s=1:3
     chthresh(s,:) = squeeze(round(1.4826 * median(abs(Data - median(Data,1)),1)));
 end
 MUthresholding.thresholds=-threshlevel*mean(chthresh,1);
+
+%add documentation to MUthresholding
 MUthresholding.threshlevel=threshlevel;
+MUthresholding.threshlength=threshlength;
+MUthresholding.date=date;
+MUthresholding.name=name;
+MUthresholding.probeNr=probeID;
+MUthresholding.exptId=[animal '_u' unit '_' exp];
+if ~isempty(varargin)
+    MUthresholding.suffix=varargin{1};
+end
+
 
 if ~isempty(varargin)
     save([basename '_p' num2str(probeID) '_MUthreshold_' varargin{1} '.mat'],'MUthresholding');
@@ -94,23 +105,10 @@ else
     save([basename '_p' num2str(probeID) '_MUthreshold.mat'],'MUthresholding');
 end
 
-%documentation - add new fields if varargin set to distinguish versions
-if isempty(varargin)
-    id.MUthreshold.date{probeID}=date;
-    id.MUthreshold.name{probeID}=name;
-    id.MUthreshold.settings{probeID}.scaleFactor = threshlevel;
-else
-    id.MUthreshold.(varargin{1}).date{probeID}=date;
-    id.MUthreshold.(varargin{1}).name{probeID}=name;
-    id.MUthreshold.(varargin{1}).settings{probeID}.scaleFactor = threshlevel;
-end
-
-save([basename '_id.mat'],'id'); %this will also add id.sampleFreq if neeed
     
 if copyToZ==1
     expname=[animal '_u' unit '_' exp];
     zbase='Z:\EphysNew\processedSpikes';
-    save(fullfile(zbase,animal,expname,[expname '_id.mat']),'id');
 
     if ~isempty(varargin)
         save(fullfile(zbase,animal,expname,[expname '_p' num2str(probeID) '_MUthreshold_' varargin{1} '.mat']),'MUthresholding');
@@ -121,7 +119,12 @@ if copyToZ==1
 end
 
 %add SpikeFiles folder if necessary
-spkbase=fullfile(physpath,animal,[animal '_u' unit '_' exp],'SpikeFiles');
+if isempty(varargin)
+    spkbase=fullfile(physpath,animal,[animal '_u' unit '_' exp],'SpikeFiles');
+else
+    spkbase=fullfile(physpath,animal,[animal '_u' unit '_' exp],['SpikeFiles_' varargin{1}]);
+end
+
 if ~exist(spkbase,'dir')
     mkdir(spkbase)
 end

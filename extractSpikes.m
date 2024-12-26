@@ -29,7 +29,8 @@ function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUfl
 %    start of each waveform
 
 % requires SpikeFiles directory to be present in the experiment folder
-% also updates the id file
+% generates extractSpk file with info
+
 %% global settings
 settings.refrTime=1; %timeout before and after large minima in ms
 settings.refrCross=0.5; %timeout after threshold crossing in ms
@@ -41,12 +42,17 @@ settings.legacyFlag=legacyFlag; %for bookkeeping
 %% deal with varargin
 % possibilities for varargin: addition to threshold file, id 
 % provided
-tname='threshold';
 loadId=1;
+tSuffix='';
+tname='threshold';
+spkFolder='SpikeFiles';
+
 if ~isempty(varargin)
     idx=find(strcmp(varargin,'tSuffix'));
     if ~isempty(idx)
-        tname=['threshold_' varargin{idx+1}];
+        tSuffix=varargin{idx+1};
+        tname=[tname '_' tSuffix];
+        spkFolder=[spkFolder '_' tSuffix];
     end
     idx=find(strcmp(varargin,'id'));
     if ~isempty(idx)
@@ -59,8 +65,6 @@ end
 
 %load threshold and id data
 expname=[animalID '_u' unitID '_' expID];
-
-
 
 if MUflag==0
     load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_' tname '.mat'])); %generates thresholding
@@ -132,8 +136,8 @@ Data(:,logical(thresholding.badChannels))=NaN; %this propagates the choice to th
 
 
 %% implement artificial threshold across time
-% this is implemented by spreading out minimum peaks of voltage across time and
-% space (channels, see next part). we are keeping the minimum value in a sliding window of the refractory
+% this is implemented by spreading out minimum peaks of voltage across time. we are 
+% keeping the minimum value in a sliding window of the refractory
 %period length. the window extends forwards and backwards. effectively, this causes
 %a 'timeout' period before and after each strong minimum, in which other smaller minima are erased
 
@@ -141,48 +145,6 @@ Data(:,logical(thresholding.badChannels))=NaN; %this propagates the choice to th
 %first and last data points [settings for Augusto's code: shift [31 30]]
 nTime=floor(settings.refrTime/1000*id.sampleFreq);
 minData=movmin(Data,[nTime+1 nTime],1);
-
-
-%% implement artificial threshold across space
-%similar to the logic for the artifical threshold across time, this spreads
-%out a minimum across channels
-%the faster way would be to use movmin after sorting channels according to
-%position; not used here because the movmin approach makes assumptions
-%about regular spacing between probe sites that often are violated
-
-%base code fragment for movmin
-%for i=1:id.probes.nShanks
-%    minTmp=minData(:,id.probes.config(id.probes.shaft==i));
-%    minData(:,1+(i-1)*id.probes.nChannels/id.probes.nShanks:i*id.probes.nChannels/id.probes.nShanks)=movmin(minTmp,9,2);
-%end
-
-% if settings.useRefrSpace
-%     %this should only be executed for the probes; we want to keep the signals
-%     %from tetrode wires independent
-%     if length(id.probes)>1 || ~strcmp(id.probes.type,'single') && ~strcmp(id.probes.type,'tetrode')
-%         
-%         minDataTmp=minData;
-%         
-%         for p=1:length(id.probes)
-%             for i=1:id.probes(p).nChannels
-%                 
-%                 offsetCh=sum([id.probes(1:p-1).nChannels]); %0 for p=1
-%                 
-%                 if ~thresholding.badChannels(i+offsetCh)
-%                     distCh=sqrt((id.probes(p).x-id.probes(p).x(i)).^2+(id.probes(p).z-id.probes(p).z(i)).^2);
-%                     mask=(distCh<=settings.refrSpace);
-%                     
-%                     maskFull=false(nChannels,1);
-%                     maskFull(offsetCh+1:offsetCh+length(mask),1)=mask;
-%                     
-%                     minData(:,i+offsetCh)=min(minDataTmp(:,maskFull),[],2);
-%                 end
-%             end
-%         end
-%         
-%         clear minDataTmp;
-%     end
-% end
 
 
 %% Detect threshold crossings within .3msec
@@ -203,18 +165,6 @@ nCross=floor(settings.refrCross/1000*id.sampleFreq);
 CrossTh = movmax(CrossTh,[nCross 0],1);
 
 
-%% Make sure there is no repeated value of max during artificial refractory period (necessary for raw data with low bit depth)
-%double - unlikely this will actually ever occur, so removed for now
-% RepeatedMax = zeros(size(Data));
-% % Is the first max in 15 samples across neighbor channels
-% for ch = -8:8 % channel window
-%     for sm = -30:0 % sample window
-%         if ~(sm==0 && ch==0)
-%         RepeatedMax = RepeatedMax | Data == circshift(Data,[sm ch]);
-%         end
-%     end
-% end
-
 %% Final spikes detection
 
 %find spikes: Minimum across refrTime and refrSpace within refrCross after
@@ -229,29 +179,20 @@ Spikes(1:floor(settings.offsetSamples/2),:)=0;
 Spikes(end-floor(settings.offsetSamples/2)+1:end,:)=0; 
 
 
-
-
 %% extract the actual waveforms
 
 %output file - we're saving each job separately so that things can run in parallel
 if MUflag==0
-    outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(JobID) '_p' num2str(probeID)  '_spike.mat']);
+    outname=fullfile(expFolder,animalID,expname,spkFolder,[expname '_j' num2str(JobID) '_p' num2str(probeID)  '_spike.mat']);
 else
-    outname=fullfile(expFolder,animalID,expname,'SpikeFiles',[expname '_j' num2str(JobID) '_p' num2str(probeID)  '_MUspike.mat']); 
+    outname=fullfile(expFolder,animalID,expname,spkFolder,[expname '_j' num2str(JobID) '_p' num2str(probeID)  '_MUspike.mat']); 
 end
-%matOut=matfile(outname,'Writable',true);
-
-%add settings and original file name for record keeping
-%matOut.settings=settings;
-%matOut.expname=expname;
-
 
 for i=1:size(Data,2)
     
     if ~thresholding.badChannels(i)
         
-        %initialize output - we're collecting things in a structure here, to
-        %add it to the matfile object later; we're only extracting spike
+        %initialize output - we're only extracting spike
         %data here, rest will happen in next file to make it easier to add
         %new properties
         spikeDataOut = struct;
@@ -285,14 +226,12 @@ for i=1:size(Data,2)
             spikeDataOut.Wvfrms=spikeDataOut.rawWvfrms-mean(spikeDataOut.rawWvfrms(:,1:settings.spikeSamples(1),:),2);
             
             %save
-            %matOut.spikeData(1,i)=spikeData;
             spikeData(1,i)=spikeDataOut;
         else
             spikeDataOut.spikeTimes=NaN;
             spikeDataOut.channelIds=NaN;
             spikeDataOut.rawWvfrms=NaN;
             spikeDataOut.Wvfrms=NaN;
-            %matOut.spikeData(1,i)=spikeData;
             spikeData(1,i)=spikeDataOut;
             
         end
@@ -301,7 +240,6 @@ for i=1:size(Data,2)
         spikeDataOut.channelIds=NaN;
         spikeDataOut.rawWvfrms=NaN;
         spikeDataOut.Wvfrms=NaN;
-        %matOut.spikeData(1,i)=spikeData;
         spikeData(1,i)=spikeDataOut;
     end
 end
@@ -309,7 +247,7 @@ end
 save(outname,'spikeData','settings','expname','-v7.3','-nocompression');
 
 
-%for job 0, add info to id file for bookkeeping
+%for job 0, save info file
 if JobID==0
     jobVec=[0:parts-1];
     startSample = samplesPerJob*jobVec - settings.offsetSamples;
@@ -320,61 +258,35 @@ if JobID==0
     edgeSample=startSample+settings.offsetSamples/2; %boundaries between samples
     edgeSample(end+1)=samples; %to finish the last bin
 
-  
-
-
-    if MUflag==0
-        %need to clean up previous versions that didn't index according to
-        %probe
-        if isfield(id,'extractSpikes')
-            if ~iscell(id.extractSpikes.jobStart) %name, date, extractSpikes go together, so only do this once
-                %if there is only one probe, or only one probe has ever been thresholded
-                %simply delete since it's now obsolete
-                if length(id.probes)==1 || sum(id.threshold.processedProbe)==1
-                    id=rmfield(id,'extractSpikes');
-                else %try to keep information, using date info
-                    t1=datetime([id.threshold.date]);
-                    t2=datetime(id.extractSpikes.date);
-                    [~,oldProbe]=min(t2-t1); %only returns 1 value
-
-                    tmpId=id.extractSpikes;
-                    id=rmfield(id,'extractSpikes');
-
-                    id.extractSpikes.date{oldProbe}=tmpId.date;
-                    id.extractSpikes.name{oldProbe}=tmpId.name;
-                    id.extractSpikes.jobStart{oldProbe}=tmpId.jobStart;
-                    id.extractSpikes.jobStop{oldProbe}=tmpId.jobStop;
-                    id.extractSpikes.jobEdges{oldProbe}=tmpId.jobEdges;
-                end
-            end
-        end
-
-        id.extractSpikes.date{probeID}=date;
-        id.extractSpikes.name{probeID}=name;
-
-        id.extractSpikes.jobStart{probeID}=startSample;
-        id.extractSpikes.jobStop{probeID}=stopSample;
-        id.extractSpikes.jobEdges{probeID}=edgeSample;
-
-        id.extractSpikes.legacyFlag(probeID)=legacyFlag;
-
-        id.extractSpikes.settings{probeID}=settings;
-    else
-        id.MUextractSpikes.date{probeID}=date;
-        id.MUextractSpikes.name{probeID}=name;
-
-        id.MUextractSpikes.jobStart{probeID}=startSample;
-        id.MUextractSpikes.jobStop{probeID}=stopSample;
-        id.MUextractSpikes.jobEdges{probeID}=edgeSample;
-
-        id.MUextractSpikes.settings{probeID}=settings;
-    end
+    extractSpk.jobStart=startSample;
+    extractSpk.jobStop=stopSample;
+    extractSpk.jobEdges=edgeSample;
+    extractSpk.date=date;
+    extractSpk.name=name;
+    extractSpk.settings=settings;
+    extractSpk.legacyFlag=legacyFlag;
+    extractSpk.probeNr=probeID;
+    extractSpk.exptId=expname;
+    extractSpk.thresholdFile=tname;
+    extractSpk.MUflag=MUflag;
     
-    save(fullfile(expFolder,animalID,expname,[expname '_id.mat']),'id'); 
+    if MUflag==0
+        infoname=[expname '_p' num2str(probeID) '_extractSpk'];
+    else
+        infoname=[expname '_p' num2str(probeID) '_MUextractSpk'];
+    end
+    if ~isempty(tSuffix)
+        infoname=[infoname '_' tSuffix '.mat'];
+    else
+        infoname=[infoname '.mat'];
+    end
+   
+
+    save(fullfile(expFolder,animalID,expname,infoname),'extractSpk'); 
     
     if copyToZ==1
         zbase='Z:\EphysNew\processedSpikes';
-        save(fullfile(zbase,animalID,expname,[expname '_id.mat']),'id'); 
+        save(fullfile(zbase,animalID,expname,infoname),'extractSpk'); 
     end
     
 end
