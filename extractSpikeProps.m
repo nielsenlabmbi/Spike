@@ -79,25 +79,30 @@ end
 %compute total channel number
 nChannels=sum([id.probes.nChannels]);
 
-%parameter choices
-spkWindow=[-4 6]; %determines over how many datapoints we're looking for the minimum
-spkTol=5; %window over which threshold crossings are considered duplicates/artefacts
-spkInterp=0.1; %interpolation factor for width calculation
-spkWindowI=15; %window in which to find minimum in interpolated data (scaling up spkWindow ends up too large)
-
 %open matfile with spike data
 %generates spikeData and settings
 if MUflag==0
     fileIn=fullfile(expFolder,animalID,expname,spkFolder,[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spike']);
-
 else
     fileIn=fullfile(expFolder,animalID,expname,spkFolder,[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_MUspike']);
 end
 load(fileIn);
 
 %samples per spike waveform
-spikeSamples=settings.spikeSamples;
+spikeSamples=settings.spikeSamples; %settings comes from the spike file
 Nsample=sum(spikeSamples)+1;
+
+%parameter choices - in ms to deal with changing sampling rates
+%previously: spkWindow=[-4 6],spkTol=5,spkWindowI=15
+%converted to ms assuming 30k sampling rate
+settings2.spkWindowT=[-0.13 0.2]; %determines over how many datapoints we're looking for the minimum
+settings2.spkTolT=0.17; %window over which threshold crossings are considered duplicates/artefacts
+settings2.spkInterp=0.1; %interpolation factor for width calculation (this is in steps, independent of sampling rate)
+settings2.spkWindowIT=0.5; %window in which to find minimum in interpolated data (scaling up spkWindow ends up too large)
+
+settings2.spkWindow=round(settings2.spkWindowT/1000*id.sampleFreq);
+settings2.spkTol=round(settings2.spkTolT/1000*id.sampleFreq);
+settings2.spkWindowI=round(settings2.spkWindowIT/1000*id.sampleFreq);
 
 %% go through spike file, compute properties for each spike, collected in arrays
 
@@ -140,13 +145,13 @@ for i=1:id.probes(probeID).nChannels
             for c=1:Nch
                 %find local minima in window around detection timepoint
                 %organization of Wvfrms is spikes x times x channel
-                tf=islocalmin(spikeData(i).Wvfrms(s,spikeSamples(1)+spkWindow(1):spikeSamples(1)+spkWindow(2),c),2,'FlatSelection','first');
+                tf=islocalmin(spikeData(i).Wvfrms(s,spikeSamples(1)+settings2.spkWindow(1):spikeSamples(1)+settings2.spkWindow(2),c),2,'FlatSelection','first');
                 %to catch case without local min - set to detection event
                 if sum(tf)==0
-                    tf(abs(spkWindow(1))+2)=1; %spikeSamples(1) is 1 to the left of the minimum
+                    tf(abs(settings2.spkWindow(1))+2)=1; %spikeSamples(1) is 1 to the left of the minimum
                 end
                 %convert to indices into full time vector
-                minIdx=find(tf==1)+spikeSamples(1)+spkWindow(1)-1;
+                minIdx=find(tf==1)+spikeSamples(1)+settings2.spkWindow(1)-1;
                 %find the one closest to the detection timepoint
                 [~,minIdx2]=min(abs(minIdx-spikeSamples(1)-1));
                 TimeMin(s,c)=minIdx(minIdx2);
@@ -181,16 +186,16 @@ for i=1:id.probes(probeID).nChannels
             %compute width based on interpolating the spikes (detection
             %channel only)
             WvTmp=griddedInterpolant(squeeze(spikeData(i).Wvfrms(s,:,1)),'cubic');
-            WvInterp=WvTmp([1:spkInterp:Nsample+1]);
+            WvInterp=WvTmp([1:settings2.spkInterp:Nsample+1]);
 
             %minimum - search around the location of the minimum in the
             %non-interpolated version to avoid mismatches because of the
             %interpolation
             tf=islocalmin(WvInterp,'FlatSelection','first');
             minIdx=find(tf==1);
-            TimeMinOrig=(TimeMin(s,1)-1)/spkInterp+1;
+            TimeMinOrig=(TimeMin(s,1)-1)/settings2.spkInterp+1;
             [minVal,minIdx2]=min(abs(minIdx-TimeMinOrig));
-            if isempty(minVal) || minVal>spkWindowI
+            if isempty(minVal) || minVal>settings2.spkWindowI
                 TimeMinI=TimeMinOrig;
             else
                 TimeMinI=minIdx(minIdx2);
@@ -200,15 +205,15 @@ for i=1:id.probes(probeID).nChannels
             %without interpolation
             tf=islocalmax(WvInterp,'FlatSelection','first');
             maxIdx=find(tf==1);
-            TimeMaxOrig=(TimeMax(s,1)-1)/spkInterp+1;
+            TimeMaxOrig=(TimeMax(s,1)-1)/settings2.spkInterp+1;
             [maxVal,maxIdx2]=min(abs(maxIdx-TimeMaxOrig));
-            if isempty(maxVal) || maxVal>spkWindowI
+            if isempty(maxVal) || maxVal>settings2.spkWindowI
                 TimeMaxI=TimeMaxOrig;
             else
                 TimeMaxI=maxIdx(maxIdx2);
             end
 
-            WidthI(s)=(TimeMaxI-TimeMinI)*spkInterp;
+            WidthI(s)=(TimeMaxI-TimeMinI)*settings2.spkInterp;
 
         end %for spikes
             
@@ -309,7 +314,7 @@ if isfield(spk,'spkTimesDet')
     
     %for each threshold crossing, find out how many other threshold
     %crossings occur within the tolerance window
-    tol=spkTol/max(spk.spkTimesDet); %uniquetol scales by maximum
+    tol=settings2.spkTol/max(spk.spkTimesDet); %uniquetol scales by maximum
     
     [~,~,idxB]=uniquetol(spk.spkTimesDet,tol); %get unique events plus/minus tolerance, idxB is an index into spkTimesDet
     countDup=accumarray(idxB,1); %count how often each duplicate shows up in spkTimesDet
@@ -332,12 +337,12 @@ if isfield(spk,'spkTimesDet')
             
             %spread out each event over neighboring samples (to give interval
             %for detection)
-            detTimesConv=detTimes+[spkWindow(1):spkWindow(2)]'; 
+            detTimesConv=detTimes+[settings2.spkWindow(1):settings2.spkWindow(2)]'; 
             detTimesConv=detTimesConv(:); %this contains detection times plus the interval around them
             
             %also need an index for grouping later - this indexes into the
             %triggering events, with repeating numbers for the same event
-            detIdxConv=repmat([1:length(detTimes)],spkWindow(2)-spkWindow(1)+1,1);
+            detIdxConv=repmat([1:length(detTimes)],settings2.spkWindow(2)-settings2.spkWindow(1)+1,1);
             detIdxConv=detIdxConv(:);
             
             %get the other channels
@@ -411,9 +416,9 @@ if isfield(spk,'spkTimesDet')
         end %if sum
     end %for ch
 end
-%add corresponding spike file name
+%add corresponding spike file name and settings
 spk.fileIn=fileIn;
-
+spk.settings=settings2;
 
 if MUflag==0
     outname=fullfile(expFolder,animalID,expname,spkFolder,[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkinfo']);
@@ -432,10 +437,7 @@ if jobID==0
     extractSpkProp.exptId=expname;
     extractSpkProp.suffix=tSuffix;
     extractSpkProp.MUflag=MUflag;
-    extractSpkProp.spkWindow=spkWindow;
-    extractSpkProp.spkTol=spkTol;
-    extractSpkProp.spkInterp=spkInterp;
-    extractSpkProp.spkWindowI=spkWindowI;
+    extractSpkProp.settings=settings2;
 
     if MUflag==0
         infoname=[expname '_p' num2str(probeID) '_extractSpkProp'];

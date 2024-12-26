@@ -34,7 +34,7 @@ function extractSpikes(expFolder,animalID,unitID,expID,probeID,name,copyToZ,MUfl
 %% global settings
 settings.refrTime=1; %timeout before and after large minima in ms
 settings.refrCross=0.5; %timeout after threshold crossing in ms
-settings.spikeSamples=[15 25]; %number of sample points per spike before and after the minimum, used to be [15 15]
+settings.spikeSamplesT=[0.5 0.83]; %in ms, corresponds to [15 25] setting before, assuming 30k rate
 settings.spikeRadius=50; %distance radius over which to extract spike waveforms
 settings.offsetSamples=800; %this used to be partsOverlapSamples; overlap between files (increased to avoid filtering artefact)
 settings.legacyFlag=legacyFlag; %for bookkeeping
@@ -86,11 +86,15 @@ samples = fileinfo.bytes/(2*nChannels); % Number of samples in amplifier data fi
 samplesPerJob = ceil(samples/parts); % Number of samples to allocate to each of the 200 jobs
 
 if legacyFlag==1
+    %offset fixed at 2s previously
     settings.offsetSamples=floor((2/1000)*id.sampleFreq);
     %need to adjust the spikeSamples so that they are not in conflict with
     %the shorter window
     settings.spikeSamples(settings.spikeSamples>floor(settings.offsetSamples/2))=floor(settings.offsetSamples/2);
 end
+
+%convert spikeSamples to number
+settings.spikeSamples=round(settings.spikeSamplesT/1000*id.sampleFreq); 
 
 
 %% read data
