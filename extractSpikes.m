@@ -268,7 +268,6 @@ if JobID==0
     extractSpk.date=date;
     extractSpk.name=name;
     extractSpk.settings=settings;
-    extractSpk.legacyFlag=legacyFlag;
     extractSpk.probeNr=probeID;
     extractSpk.exptId=expname;
     extractSpk.thresholdFile=tname;
