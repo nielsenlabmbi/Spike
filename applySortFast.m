@@ -2,8 +2,7 @@ function applySortFast(expFolder,animalID,unitID,expID,probeID,name,copyToZ,jobI
 % apply sorting steps
 % note: this will not respect any sorting steps that require units to be
 % made invisible since it is applied to each jobs file independently
-% generates one sort file per jobs file to be merged later (merging will
-% handle
+% generates one sort file per jobs file to be merged later 
 %
 % input parameters:
 % expFolder - base folder for experiments (string)

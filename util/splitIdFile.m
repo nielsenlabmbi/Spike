@@ -1,10 +1,11 @@
-%split id files into id and history
-%function splitIdFile(fileBase,animalId,unitId,expId)
-
-fileBase='d:/ephys';
-animalId='feaw6';
-unitId='001';
-expId='003';
+function splitIdFile(fileBase,animalId,unitId,expId)
+%split id files into separate setting files to be compatible with the
+%processing pipeline allowing multiple versions
+%we are ignoring all of the MU processing here as the id files often do not
+%correctly reflect which threshold files were used to extract spikes;
+%finally, no update of threshold file since that would just be name & date, 
+%but update of spkSort file to be able to read it with sortGui
+%check id file first to make sure information is actually correct
 
 expname=[animalId '_u' unitId '_' expId];
 fname=fullfile(fileBase,animalId,expname,[expname '_id.mat']);
@@ -28,8 +29,7 @@ end
 
 save(fullfile(fileBase,animalId,expname,[expname '_id.mat']),'id');
 
-%we're skipping updating the threshold file, since that would require
-%access to the file
+
 
 %% extractSpikes
 if isfield(idIn.id,'extractSpikes')
@@ -63,12 +63,15 @@ if isfield(idIn.id,'extractSpikes')
         %threshold - for spike files, there aren't any versions (only for
         %MU)
         extractSpk.exptId=idIn.id.exptId;
-        extractSpk.thresholdFile='threshold';
+        extractSpk.threshold.filename='threshold';
+        extractSpk.threshold.date=idIn.id.threshold.name{i};
+        extractSpk.threshold.name=idIn.id.threshold.date{i};
         extractSpk.MUflag=0;
                    
         %save
         outname=[expname '_p' num2str(i) '_extractSpk'];
         save(fullfile(fileBase,animalId,expname,outname),'extractSpk');
+        
     end
 end
 
@@ -90,8 +93,9 @@ if isfield(idIn.id,'extractSpikeProps')
         extractSpkProp.settings.spkInterp=0.1;
     
         %save
-        outname=[expname '_p' num2str(i) '_extractSpkProp'];
+        outname=[expname '_p' num2str(i) '_extractSpkProp.mat'];
         save(fullfile(fileBase,animalId,expname,outname),'extractSpkProp');
+        
     end
 end
 
@@ -146,10 +150,5 @@ if isfield(idIn.id,'spikeSort')
     end
 end
 
-
-%% MU extractSpikes
-
-
-%% MU extractSpikeProps
-
-
+%% done - warning dialog
+warndlg('Updated all settings files. Please make sure to check files to make sure information is correct!');

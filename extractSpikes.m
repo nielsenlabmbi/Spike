@@ -67,9 +67,11 @@ end
 expname=[animalID '_u' unitID '_' expID];
 
 if MUflag==0
-    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_' tname '.mat'])); %generates thresholding
+    threshname=fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_' tname '.mat']);
+    load(threshname); %generates thresholding
 else
-    load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_MU' tname '.mat'])); %generates MUthresholding
+    threshname=fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_MU' tname '.mat']);
+    load(threshname); %generates MUthresholding
     thresholding=MUthresholding;
 end
 if loadId==1
@@ -270,8 +272,20 @@ if JobID==0
     extractSpk.settings=settings;
     extractSpk.probeNr=probeID;
     extractSpk.exptId=expname;
-    extractSpk.thresholdFile=tname;
     extractSpk.MUflag=MUflag;
+
+    %threshold information as available
+    extractSpk.threshold.filename=tname;
+    if isfield(thresholding,'date')
+        extractSpk.threshold.date=thresholding.date;
+    else
+        fn=dir(threshname);
+        fn2=strsplit(fn.date,' '); %to retain only the month
+        extractSpk.threshold.date=fn2{1};
+    end
+    if isfield(thresholding,'name')
+        extractSpk.threshold.name=thresholding.name;
+    end
     
     if MUflag==0
         infoname=[expname '_p' num2str(probeID) '_extractSpk'];
