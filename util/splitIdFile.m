@@ -140,7 +140,10 @@ if isfield(idIn.id,'spikeSort')
                     spkSort.info.jobsList=[spkSort.info.jobStart:spkSort.info.jobStop];
                 end
                 spkSort.info.jobEdges=idIn.id.extractSpikes.jobEdges{i};
-                spkSort.info.tSuffix='';
+                spkSort.info.spikeFilesSuffix='';
+                spkSort.info.thresholdInfo.filename='threshold';
+                spkSort.info.thresholdInfo.date=idIn.id.threshold.name{i};
+                spkSort.info.thresholdInfo.name=idIn.id.threshold.date{i};
 
                 %save
                 save(spkSortName,'spkSort');

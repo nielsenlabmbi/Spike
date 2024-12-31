@@ -286,6 +286,10 @@ if JobID==0
     if isfield(thresholding,'name')
         extractSpk.threshold.name=thresholding.name;
     end
+    if MUflag==1
+        extractSpk.threshold.threshlevel=thresholding.threshlevel;
+        extractSpk.threshold.threshlength=thresholding.threshlength;
+    end
     
     if MUflag==0
         infoname=[expname '_p' num2str(probeID) '_extractSpk'];

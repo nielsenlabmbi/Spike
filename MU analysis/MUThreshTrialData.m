@@ -44,8 +44,12 @@ basename=fullfile(physpath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '
 %load trial info
 load([basename '_trialInfo.mat']);
 
-%load SU data
-load([basename '_p' num2str(probeId) '_MUspkMerge.mat']);
+%load MU data
+mergeName=[basename '_p' num2str(probeId) '_MUspkMerge'];
+if ~isempty(varargin)
+    mergeName=[mergeName '_' varargin{1}];
+end
+load(mergeName);
 
 %get sampling rate
 load([basename '_id.mat']); %generates id
@@ -117,23 +121,33 @@ MUThreshInfo.dom=trialInfo.dom;
 MUThreshInfo.domval=trialInfo.domval;
 MUThreshInfo.blankId=trialInfo.blankId;
 MUThreshInfo.triallist=trialInfo.triallist;
+if ~isempty(varargin)
+    MUThreshInfo.tSuffix=varargin{1};
+end
+MUThreshInfo.sortfile=mergeName;
+MUThreshInfo.sortdate=MUspkMerge.info.date;
 
 trialExclude=MUThreshFlagOutlier(MUThresh,MUThreshInfo,0);
 MUThreshInfo.trialExclude = trialExclude;
 
+%save
+fname1=[basename '_p' num2str(probeId) '_MUThreshTrial'];
 if ~isempty(varargin)
-    save([basename '_p' num2str(probeId) '_MUThreshTrial_' varargin{1} '.mat'],'MUThresh','MUThreshInfo');
-    if copyToZ==1
-        save(fullfile('Z:\EphysNew\processedSpikes',animal,[animal '_u' unit '_' exp],...
-            [animal '_u' unit '_' exp '_p' num2str(probeId) '_MUThreshTrial_' varargin{1} '.mat']),'MUThresh','MUThreshInfo');
-    end
-else
-    save([basename '_p' num2str(probeId) '_MUThreshTrial.mat'],'MUThresh','MUThreshInfo');
-    if copyToZ==1
-        save(fullfile('Z:\EphysNew\processedSpikes',animal,[animal '_u' unit '_' exp],...
-            [animal '_u' unit '_' exp '_p' num2str(probeId) '_MUThreshTrial.mat']),'MUThresh','MUThreshInfo');
-    end
+    fname1=[fname1 '_' varargin{1}];    
 end
+save(fname1,'MUThresh','MUThreshInfo');
+
+if copyToZ==1
+    fname2=fullfile('Z:\EphysNew\processedSpikes',animal,[animal '_u' unit '_' exp],...
+            [animal '_u' unit '_' exp '_p' num2str(probeId) '_MUThreshTrial']);
+    if ~isempty(varargin)
+        fname2=[fname2 '_' varargin{1}];
+    end
+    save(fname2,'MUThresh','MUThreshInfo');
+end
+
+
+
 
 
 
