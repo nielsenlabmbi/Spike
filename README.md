@@ -92,11 +92,12 @@
 
 2) applySortFast
    - apply partSortHist to each spkinfo job file
+   - optional argument: file suffix
    - can be run in a parfor loop
    - creates spkSortP structure with fields unitid, spktimes, detCh, detChSort and info
-   *Output: SpikeFiles\filename_jID_pX_spkSort.mat; updates to _id.mat file (local and on Z if selected)*
+   _Output: SpikeFiles*\filename_jID_pX_spkSort.mat_
 
-3) mergeSort
+3) mergeJobSort
    - merge the individual job spkSort files
    - creates spkSort structure containing the fields unitid, spktimes, detCh, detChSort, unitinfo, spkProps, info
    - note that spkProps (waveform info) is copied from the partSpkSort file and therefore only reflects properties of that random sample of spikes
