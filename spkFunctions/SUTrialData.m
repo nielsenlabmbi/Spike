@@ -40,7 +40,11 @@ basename=fullfile(physpath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '
 load([basename '_trialInfo.mat']);
 
 %load SU data
-load([basename '_p' num2str(probeId) '_spkSort.mat']);
+sortName=[basename '_p' num2str(probeId) '_spkSort'];
+if ~isempty(varargin)
+    sortName=[sortName '_' varargin{1}];
+end
+load(sortName);
 
 %get sampling rate - either from header file or from id file
 headerName=[basename '_info.rhd'];
@@ -116,17 +120,25 @@ SUinfo.dom=trialInfo.dom;
 SUinfo.domval=trialInfo.domval;
 SUinfo.blankId=trialInfo.blankId;
 SUinfo.triallist=trialInfo.triallist;
-
 if ~isempty(varargin)
-    save([basename '_p' num2str(probeId) '_SUTrial_' varargin{1} '.mat'],'SU','SUinfo');
-    if copyToZ==1
-        save(fullfile('Z:\EphysNew\processedSpikes',animal,[animal '_u' unit '_' exp],...
-            [animal '_u' unit '_' exp '_p' num2str(probeId) '_SUTrial_' varargin{1} '.mat']),'SU','SUinfo');
+    SUinfo.tSuffix=varargin{1};
+end
+SUinfo.sortfile=sortName;
+SUinfo.sortdate=spkSort.info.date;
+SUinfo.sortname=spkSort.info.name;
+
+%save
+fname1=[basename '_p' num2str(probeId) '_SUTrial'];
+if ~isempty(varargin)
+    fname1=[fname1 '_' varargin{1}];    
+end
+save(fname1,'SU','SUinfo');
+
+if copyToZ==1
+    fname2=fullfile('Z:\EphysNew\processedSpikes',animal,[animal '_u' unit '_' exp],...
+            [animal '_u' unit '_' exp '_p' num2str(probeId) '_SUTrial']);
+    if ~isempty(varargin)
+        fname2=[fname2 '_' varargin{1}];
     end
-else
-    save([basename '_p' num2str(probeId) '_SUTrial.mat'],'SU','SUinfo');
-    if copyToZ==1
-        save(fullfile('Z:\EphysNew\processedSpikes',animal,[animal '_u' unit '_' exp],...
-            [animal '_u' unit '_' exp '_p' num2str(probeId) '_SUTrial.mat']),'SU','SUinfo');
-    end
+    save(fname2,'SU','SUinfo');
 end

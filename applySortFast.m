@@ -1,9 +1,8 @@
-function applySortFast(expFolder,animalID,unitID,expID,probeID,name,copyToZ,jobID)
+function applySortFast(expFolder,animalID,unitID,expID,probeID,name,jobID,varargin)
 % apply sorting steps
 % note: this will not respect any sorting steps that require units to be
 % made invisible since it is applied to each jobs file independently
-% generates one sort file per jobs file to be merged later (merging will
-% handle
+% generates one sort file per jobs file to be merged later 
 %
 % input parameters:
 % expFolder - base folder for experiments (string)
@@ -12,20 +11,33 @@ function applySortFast(expFolder,animalID,unitID,expID,probeID,name,copyToZ,jobI
 % expID - experiment ID (string)
 % probeID - probe ID (number)
 % name - name or initials of person running the script (for bookkeeping)
-% copyToZ - copy id file to Z?
 % jobID - job ID of raw spike file to process (number)
+% varargin - optional suffix for spike files etc
 
 % output:
 % one file
 % structure spkSortP with fields unitid, spktimes, detCh,detChSort
 
+if ~isempty(varargin)
+    tSuffix=varargin{1};
+else
+    tSuffix='';
+end
+
 %load history - assumption is this is saved as partSortHist
 expname=[animalID '_u' unitID '_' expID];
 histname=[expname '_p' num2str(probeID) '_partSortHist'];
+if ~isempty(tSuffix)
+   histname=[histname '_' tSuffix]; 
+end
 load(fullfile(expFolder,animalID,expname,histname)); %generates sortHist
 
 %get data - generates spk
-load(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkinfo']));
+sDir='SpikeFiles';
+if ~isempty(tSuffix)
+    sDir=[sDir '_' tSuffix];
+end
+load(fullfile(expFolder,animalID,expname,sDir,[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkinfo']));
 
 %start building output
 spkSortP.unitid=zeros(size(spk.detCh));
@@ -129,22 +141,7 @@ spkSortP.info.job=jobID;
 spkSortP.info.expname=expname;
 spkSortP.info.historyFile=histname;
 
-save(fullfile(expFolder,animalID,expname,'SpikeFiles',[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkSort']),'spkSortP');
-
-
-%add to id file for job 0 for bookkeeping
-if jobID==0
-    load(fullfile(expFolder,animalID,expname,[expname '_id'])); %generates id
-
-    id.applyJobSort.name{probeID}=name;
-    id.applyJobSort.date{probeID}=date;
-    
-    save(fullfile(expFolder,animalID,expname,[expname '_id']),'id');
-    if copyToZ==1
-        zbase='Z:\EphysNew\processedSpikes';
-        save(fullfile(zbase,animalID,expname,[expname '_id']),'id');
-    end
-end
+save(fullfile(expFolder,animalID,expname,sDir,[expname  '_j' num2str(jobID) '_p' num2str(probeID) '_spkSort']),'spkSortP');
 
 disp(['applySortFast job ID ' num2str(jobID) ' done.'])
 end

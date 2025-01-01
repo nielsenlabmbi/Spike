@@ -1,6 +1,6 @@
 function mergeSpkInfo(filepath,expname,probeID,startID,stopID)
 
-%this function merges all spike files into one file for MUA analysis
+%this function merges all spike files into one file 
 %it saves most of the same info that is contained in spkSort
 %
 %input:

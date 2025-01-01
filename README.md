@@ -8,20 +8,29 @@
    - needs read_Intan_Header
    - note on probe configurations: code needs the probeConfig folder. that folder should contain a file for every probe configuration called probeConfig_type, where type is the name used for the probe in the id file (such as 64D). probeConfig files are functions that generate a matrix with 5 columns (column 1: channel number, column 2: x position, column 3: y, column 4: z, column 5: shank number). The threshold gui will automatically list all probes for which probeConfig files exist.
    - note: threshold data contains data for 1 probe only; id file is generated with probe information for all probes present
-   *Output: filename_pX_threshold.mat and filename_id.mat (locally and on Z if selected); generates SpikeFiles folder*
+   - multiple versions are possible and will be marked with a suffix for the threshold file; each will generate its own SpikeFiles folder
+   _Output: filename_pX_threshold*.mat and filename_id.mat (locally and on Z if selected); generates SpikeFiles* folder_
 
 2) extractSpikes:
    - run extractSpikes to extract waveforms for each channel for 1 probe (use parfor for speed)
    - implements temporal (and optionally spatial) constraints
+   - takes 2 optional inputs:
+     - id: for batch processing, the id file can be read outside the parfor loop and then provided as an input argument to the function (otherwise processing may stop because multiple processes attempt to read the id file)
+     - tSuffix: suffix for threshold and SpikeFiles folder 
    - note: run with parfor loop to speed up processing time
    - note: first job should be 0, not 1
    - note: if you are regenerating files for a previously sorted file, check whether you need to set the legacyFlag to 1 (this determines the amount of overlap between jobs). You can tell whether this needs to be the case by loading a single job file and looking at the settings structure. If it does not contain settings.offsetSamples, or if settings.legacyFlag=1, then you need to set legacyFlag to 1.
-   *Output: SpikeFiles\filename_pX_jID_spike.mat; updates to _id.mat file (local and on Z if selected)*
+   - note: different versions of spike files are only indicated by the folder they are in, not by their filename
+   _Output: SpikeFiles*\filename_pX_jID_spike.mat; filename_pX_extractSpk*.mat file (local and on Z if selected)_
 
 3) extractSpikeProps:
    - extract set of properties for each waveform on one probe
+   - takes 2 optional inputs:
+     - id: for batch processing, the id file can be read outside the parfor loop and then provided as an input argument to the function (otherwise processing may stop because multiple processes attempt to read the id file)
+     - tSuffix: suffix for threshold and SpikeFiles folder 
    - note: use parfor to speed up processing time
-   *Output: SpikeFiles\filename_jID_pX_spkinfo.mat; updates to _id.mat file (local and on Z if selected)*
+   - note: different versions of spike files are only indicated by the folder they are in, not by their filename
+   _Output: SpikeFiles\filename_jID_pX_spkinfo.mat; filename_pX_extractSpkProp*.mat file (local and on Z if selected)_
 
 4) sortGUI (GUI):
    - sort data
@@ -42,8 +51,9 @@
    - undo can undo the last action applied
    - apply history applies all of the steps applied to a previously sorted file to the current ones
    - output is spkSort structure, which in addition to general info contains *unitid*: vector with unit assignment for each time stamp (-1 artefact, no distinction between SU, MU and noise), *spktimes*: vector with all spike time stamps, *unitinfo*: cell array with type assignemt (SU, MU, noise, none) for each unitid
-   *Output for 100% jobs: filename_pX_spkSort.mat (local and on Z); filename_pX_sortHist.mat (local and on Z); updates to _id.mat file (local and on Z) and database*
-   *Output for <100% jobs: filename_pX_partSpkSort.mat (local and on Z); filename_pX_partSortHist.mat (local and on Z); updates to _id.mat file (local and on Z) and database*
+   - note: different versions are possible by loading different spkinfo files (determined when loading from id file); different spkSort files can also be saved by changing the suffix for the spkSort file (does not have to match the suffix for the spkinfo files)
+   _Output for 100% jobs: filename_pX_spkSort*.mat (local and on Z); filename_pX_sortHist*.mat (local and on Z); updates to database_
+   _Output for <100% jobs: filename_pX_partSpkSort*.mat (local and on Z); filename_pX_partSortHist*.mat (local and on Z); updates to database_
 
 
 
@@ -63,8 +73,9 @@
    - extracts spike times in a window around a selected event
    - time of spikes is reported relative to event in ms 
    - also computes mean number of spikes before and after event
-   - adds trial info from Analyzer (copy from trialInfo structure) 
-   *Output: filename_pX_SUTrial.mat* 
+   - adds trial info from Analyzer (copy from trialInfo structure)
+   - optional input argument allows different versions of input/output 
+   _Output: filename_pX_SUTrial*.mat_
 
 3) computePSTH (in spkFunctions)
    - compute PSTH for a unit
@@ -73,18 +84,20 @@
 
 
 ## Partial spike sorting pipeline (for long files)
+
 1) sortGUI 
    - First sort using less than 100% of jobs, making sure by clicking refreshjobs that the sorting is representative. 
    - Also assign categories to all units. 
-   *Output: filename_pX_partSpkSort.mat, filename_pX_partSortHist.mat* 
+   _Output: filename_pX_partSpkSort*.mat, filename_pX_partSortHist*.mat_
 
 2) applySortFast
    - apply partSortHist to each spkinfo job file
+   - optional argument: file suffix
    - can be run in a parfor loop
    - creates spkSortP structure with fields unitid, spktimes, detCh, detChSort and info
-   *Output: SpikeFiles\filename_jID_pX_spkSort.mat; updates to _id.mat file (local and on Z if selected)*
+   _Output: SpikeFiles*\filename_jID_pX_spkSort.mat_
 
-3) mergeSort
+3) mergeJobSort
    - merge the individual job spkSort files
    - creates spkSort structure containing the fields unitid, spktimes, detCh, detChSort, unitinfo, spkProps, info
    - note that spkProps (waveform info) is copied from the partSpkSort file and therefore only reflects properties of that random sample of spikes
@@ -93,6 +106,7 @@
 
 
 ## Spike sorting across separate files (all functions in util)
+
 1) mergeIntan
    - merges intan amplifier files
    - merging occurs independently of probes
@@ -116,6 +130,7 @@
 
 
 ## Processing of multi-unit data
+
 There are 2 kinds of multi-unit data that can be analyzed:
 - MUThresh: Thresholded but not spike sorted data
 - MUEnv: 'Nikos' style analysis using the downsampled, rectified continuous signal
@@ -125,15 +140,18 @@ Lastly, MURaw will refer to the underlying original multi-unit signal (the bandp
 
 1) computeMUThreshold (in MU analysis)
 - computes automated threshold for every channel
- *Output: filename_MUthreshold.mat and updates to _id.mat file*
+- optional argument: suffix (to allow different versions)
+ _Output: filename_MUthreshold*.mat; generates SpikeFiles* folder_
 
 2) extractSpikes, extractSpikeProps
 - run usual pipeline of extractSpikes and extractSpikeProps, setting the MUflag to 1 so that it uses the MUthresholding file and generates the right output
- *Output: SpikeFiles\filename_pX_jID_MUspike.mat, SpikeFiles\filename_pX_jID_MUspkinfo.mat, updates to _id.mat file*
+- same optional arguments as for the SU pipeline to allow preloading of ID files and multiple versions of output files
+ _Output: SpikeFiles*\filename_pX_jID_MUspike.mat, SpikeFiles*\filename_pX_jID_MUspkinfo.mat, filename_pX_extractSpk*.mat file, filename_pX_extractSpkProp*.mat file_
 
 3) mergeMUspkInfo (in MU analysis)
 - merges the separate MUspkinfo jobs, extracting spike times and detection channels for further analysis
-*Output: filename_MUspkMerge.mat*
+- optional argument: suffix to indicate version
+_Output: filename_MUspkMerge*.mat_
 
 4) extractTrials (in spkFunctions)
 - see above for SU analysis
@@ -144,7 +162,8 @@ Lastly, MURaw will refer to the underlying original multi-unit signal (the bandp
 - reorganizes into a structure MUThresh, containing information relative to a specific event for every channel and every trial
 - computes number of spikes and firing rates in baseline, stimulus period and entire trial
 - adds trial info from Analyzer
-*Output: filename_pX_MUThreshTrial.mat* 
+- optional input argument allows different versions of input/output 
+_Output: filename_pX_MUThreshTrial*.mat_
 
 
 ### MUEnv analysis pipeline
@@ -164,6 +183,7 @@ Lastly, MURaw will refer to the underlying original multi-unit signal (the bandp
 
 
 ## Using the new spike sorting pipeline with data sorted using the old pipeline:
+
 The new spike sorting GUI can be used with data processed with the old spike sorting process by following these steps (all of these files can be found in util):
 1) Make sure a spkSort file has been generated for the old data
 2) Compute the raw (Intan) detection channel:
@@ -192,10 +212,12 @@ The new spike sorting GUI can be used with data processed with the old spike sor
     
 
 ## Dealing with blackrock files
+
 To sort files acquired with Blackrock, they need to be converted into files that follow the same format as the intan files; at that point, the same code as always can be applied. 
 1) convertBrIntan
    - provide name of blackrock file
    - generates a fake header file, and an amplifier file
 *Output: filename_info.rhd, filename_amplifier.dat*
+
 
 

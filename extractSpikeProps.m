@@ -417,7 +417,7 @@ if isfield(spk,'spkTimesDet')
     end %for ch
 end
 %add corresponding spike file name and settings
-spk.fileIn=fileIn;
+spk.expname=fileIn;
 spk.settings=settings2;
 
 if MUflag==0

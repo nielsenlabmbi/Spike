@@ -1,4 +1,4 @@
-function mergeMUspkInfo(filepath,animalID,unitID,expID,probeID,startID,stopID)
+function mergeMUspkInfo(filepath,animalID,unitID,expID,probeID,startID,stopID,varargin)
 
 %this function merges all MU spike files into one file for further analysis
 %will remove events flagged as duplicates to stay consistent with the
@@ -12,6 +12,7 @@ function mergeMUspkInfo(filepath,animalID,unitID,expID,probeID,startID,stopID)
 %probeID: probe id
 %startID: start job ID
 %stopID: stop job ID
+%varargin: suffix for versions
 %
 %output:
 %MUspkMerge structure with fields
@@ -25,13 +26,17 @@ function mergeMUspkInfo(filepath,animalID,unitID,expID,probeID,startID,stopID)
 wb=waitbar(0,'Merging MUspkinfo');
 
 expname=[animalID '_u' unitID '_' expID];
+sDir='SpikeFiles';
+if ~isempty(varargin)
+    sDir=[sDir '_' varargin{1}];
+end
 
 iniFile=0; %just in case the first file is empty
 for i=startID:stopID
     waitbar((i-startID)/(stopID-startID),wb);
    
     %load file
-    fname=fullfile(filepath,animalID,expname,'SpikeFiles',[expname '_j' num2str(i) '_p' num2str(probeID) '_MUspkinfo']);           
+    fname=fullfile(filepath,animalID,expname,sDir,[expname '_j' num2str(i) '_p' num2str(probeID) '_MUspkinfo']);           
     load(fname); %generates spk
     
     %output
@@ -43,6 +48,8 @@ for i=startID:stopID
             MUspkMerge.detChSort=spk.detChSort(idx);
             MUspkMerge.NDuplicate=spk.NDuplicate (idx);
             MUspkMerge.jobId=ones(size(idx))*i;
+
+
 
             iniFile=1;
         else
@@ -57,5 +64,34 @@ for i=startID:stopID
     end
 end
 
-save(fullfile(filepath,animalID,expname,[expname '_p' num2str(probeID) '_MUspkMerge']),'MUspkMerge'); 
+
+
+
+%add information to spkMerge file for book keeping 
+MUspkMerge.info.expname=expname;
+MUspkMerge.info.probeID=probeID;
+MUspkMerge.info.startID=startID;
+MUspkMerge.info.stopID=stopID;
+MUspkMerge.info.date=date;
+if ~isempty(varargin)
+    MUspkMerge.info.tSuffix=varargin{1};
+else
+    MUspkMerge.info.tSuffix='';
+end
+%read extractSpikes file to get job edges
+infoname=[expname '_p' num2str(probeID) '_MUextractSpk'];
+if ~isempty(varargin)
+    infoname=[infoname '_' varargin{1}];
+end
+load(fullfile(filepath,animalID,expname,infoname)); %generates extractSpk
+
+MUspkMerge.info.jobEdges=extractSpk.jobEdges;
+MUspkMerge.info.threshold=extractSpk.threshold;
+
+%save
+outname=[expname '_p' num2str(probeID) '_MUspkMerge'];
+if ~isempty(varargin)
+    outname=[outname '_' varargin{1}];
+end
+save(fullfile(filepath,animalID,expname,outname),'MUspkMerge'); 
 close(wb);
