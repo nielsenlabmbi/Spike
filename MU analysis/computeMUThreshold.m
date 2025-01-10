@@ -83,6 +83,9 @@ for s=1:3
     Data=Data(MUthresholding.offsetSamples:end,:);
     
     %compute threshold
+    %this uses a scaled version of the median absolute deviation to
+    %estimate the standard deviation of the signal; the MAD is scaled
+    %appropriately for a normal distribution
     chthresh(s,:) = squeeze(round(1.4826 * median(abs(Data - median(Data,1)),1)));
 end
 MUthresholding.thresholds=-threshlevel*mean(chthresh,1);
