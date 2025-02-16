@@ -19,7 +19,7 @@ load(fullfile(expFolder,animalID,expname,[expname '_mergeInfo.mat'])); %generate
 %load id file for merged file - we need this for the extract offset and
 %other
 %info
-idIn=load(fullfile(expFolder,animalID,expname,[expname '_id.mat'])); 
+extSpkIn=load(fullfile(expFolder,animalID,expname,[expname '_p' num2str(probeID) '_extractSpk.mat']));
 
 %compute edges of files (in samples)
 %filesize - bytes per file merged
@@ -62,7 +62,7 @@ for f=1:length(mergeInfo.files)
     %part of processing the first and last job
     %here, merging changes how jobs are organized, and spikes are not
     %dropped for the parts where files are connected
-    offsetSamples=idIn.id.extractSpikes.settings{probeID}.offsetSamples;
+    offsetSamples=extSpkIn.extractSpk.settings.offsetSamples;
     endFile=mergeInfo.filesize(f)/(mergeInfo.nChannel*2);
     tf = spkSort.spktimes>floor(offsetSamples/2);
     tf = tf & spkSort.spktimes<endFile-floor(offsetSamples/2);
@@ -84,32 +84,7 @@ for f=1:length(mergeInfo.files)
             return;
         end
     end
-    save(outfile,'spkSort');
-
-    %either generate new id files or add info to them
-    idname=fullfile(expFolder,animalID,outname,[outname '_id.mat']);
-    if ~exist(idname,'file')
-        %generate id, only with the minimal information (since the rest was
-        %not done on this file individually)
-        id.exptId=outname;
-        id.probes=idIn.id.probes;
-        id.isBR=idIn.id.isBR;
-        id.sampleFreq=idIn.id.sampleFreq;
-    else
-        load(idname); %generates id
-    end
-    id.spikeSort.name{probeID}=idIn.id.spikeSort.name{probeID};
-    id.spikeSort.date{probeID}=idIn.id.spikeSort.date{probeID};
-    id.spikeSort.NSingleUnit(probeID)=idIn.id.spikeSort.NSingleUnit(probeID);
-    id.spikeSort.NMultiUnit(probeID)=idIn.id.spikeSort.NMultiUnit(probeID);
-
-    %add info about merging and splitting (has not happened yet as the id file
-    %is not touched/generated during merge)
-    id.mergeInfo.processedMerged(probeID)=1;
-    id.mergeInfo.splitSortFiles.name{probeID}=name;
-    id.mergeInfo.splitSortFiles.date{probeID}=date;
-
-    save(idname,'id');
+    save(outfile,'spkSort','mergeInfo');
 
 end
 
@@ -121,4 +96,4 @@ end
 
 
 %% save merge info file
-save(fullfile(expFolder,animalID,outname,[outname '_mergeInfo']),'mergeInfo');
+% save(fullfile(expFolder,animalID,outname,[outname '_mergeInfo']),'mergeInfo');
