@@ -2,16 +2,25 @@
 
 ## Spike processing pipeline:
 
-1) thresholdGui (GUI) and thresholdGuiSettings (GUI):
+1) probe configuration file
+   - need a configuration file for every probe, stored in the probeConfig folder
+   - file are called probeConfig_type, where type is the name of the probe
+   - probeConfig files are functions that generate a matrix with 5 columns (column 1: channel number, column 2: x position, column 3: y, column 4: z, column 5: shank number)
+   - convention for Z: 0 = bottom; positive numbers = channels higher on probe
+   - can visualize any configuration file by calling probeViewer(type)
+   _Output: probeConfig_XXX.mat_
+
+
+2) thresholdGui (GUI) and thresholdGuiSettings (GUI):
    - visually set threshold for each channel, mark bad channels
    - uses median approach to calculate a threshold guess for every channel
    - needs read_Intan_Header
-   - note on probe configurations: code needs the probeConfig folder. that folder should contain a file for every probe configuration called probeConfig_type, where type is the name used for the probe in the id file (such as 64D). probeConfig files are functions that generate a matrix with 5 columns (column 1: channel number, column 2: x position, column 3: y, column 4: z, column 5: shank number). The threshold gui will automatically list all probes for which probeConfig files exist.
+   - needs configuration file (the threshold gui will automatically list all probes for which probeConfig files exist)
    - note: threshold data contains data for 1 probe only; id file is generated with probe information for all probes present
    - multiple versions are possible and will be marked with a suffix for the threshold file; each will generate its own SpikeFiles folder
    _Output: filename_pX_threshold*.mat and filename_id.mat (locally and on Z if selected); generates SpikeFiles* folder_
 
-2) extractSpikes:
+3) extractSpikes:
    - run extractSpikes to extract waveforms for each channel for 1 probe (use parfor for speed)
    - implements temporal (and optionally spatial) constraints
    - takes 2 optional inputs:
@@ -23,7 +32,7 @@
    - note: different versions of spike files are only indicated by the folder they are in, not by their filename
    _Output: SpikeFiles*\filename_pX_jID_spike.mat; filename_pX_extractSpk*.mat file (local and on Z if selected)_
 
-3) extractSpikeProps:
+4) extractSpikeProps:
    - extract set of properties for each waveform on one probe
    - takes 2 optional inputs:
      - id: for batch processing, the id file can be read outside the parfor loop and then provided as an input argument to the function (otherwise processing may stop because multiple processes attempt to read the id file)
@@ -32,7 +41,7 @@
    - note: different versions of spike files are only indicated by the folder they are in, not by their filename
    _Output: SpikeFiles\filename_jID_pX_spkinfo.mat; filename_pX_extractSpkProp*.mat file (local and on Z if selected)_
 
-4) sortGUI (GUI):
+5) sortGUI (GUI):
    - sort data
    - load data file after specifying an id file or a spkSort file
    - for the id file, can limit the number of jobs and the range of jobs
