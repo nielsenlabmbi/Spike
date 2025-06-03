@@ -61,6 +61,7 @@
    - apply history applies all of the steps applied to a previously sorted file to the current ones
    - output is spkSort structure, which in addition to general info contains *unitid*: vector with unit assignment for each time stamp (-1 artefact, no distinction between SU, MU and noise), *spktimes*: vector with all spike time stamps, *unitinfo*: cell array with type assignemt (SU, MU, noise, none) for each unitid
    - note: different versions are possible by loading different spkinfo files (determined when loading from id file); different spkSort files can also be saved by changing the suffix for the spkSort file (does not have to match the suffix for the spkinfo files)
+   - note: if there is an error about a missing field in spkSort, it's due to using the old id file format. in this case, first run splitIdFile to convert the old id file format to the new one (adds entries to spkSort, e.g.)
    _Output for 100% jobs: filename_pX_spkSort*.mat (local and on Z); filename_pX_sortHist*.mat (local and on Z); updates to database_
    _Output for <100% jobs: filename_pX_partSpkSort*.mat (local and on Z); filename_pX_partSortHist*.mat (local and on Z); updates to database_
 
