@@ -2,6 +2,9 @@
 %goal: generate a header fil (_info.rhd) containing only the sample rate
 %and an amplifier file (_amplifier.dat) containing the raw data 
 %this will allow the rest of the pipeline to function normally
+%
+%input: brFile - name of blackrock file, with .ns6 extension
+
 function convertBrIntan(brFile)
 
 % output file names

@@ -18,6 +18,7 @@ function detChOldFormat(expFolder,animalID,unitID,expID,probeID,detChannelMethod
 %2: use experiment file; this only works if experiments file has not been
 %overwritten (for multiple probes)
 %3: use Properties(17,:) and Properties(18,:) from spikes file
+%4: set to all 1 (this is for tetrode data only!)
 
 %spikesIn: only needed for method 3, spikes or Spikes file to be loaded
 %(can be empty string otherwise)
@@ -128,6 +129,9 @@ switch detChannelMethod
 
         %now use channel map to get channels
         spkSort.detCh=chmap(spkSort.detChSort);
+
+    case 4
+        spkSort.detCh=ones(size(spkSort.spktimes));
 
 end
 

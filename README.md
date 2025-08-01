@@ -192,6 +192,20 @@ _Output: filename_pX_MUThreshTrial*.mat_
 *Output: filename__cCh_pX_MURawTrial.mat* 
 
 
+## Project files
+
+1) Generate spreadsheet
+   - copy DatasetTemplate.xlsx from git\database to a local folder
+   - enter files to be used in project
+     - animal, notes, initials, Datatype and project can be of type general
+     - unit & experiment need to be text for the import into the databse to work
+     - at least one row needs to have an entry in notes
+     - project should be a unique identifier for the dataset
+     - if experiments come as 'animal_uXXX_XXX', can use 'text to columns' function (under data) to split)
+     - text function will turn number into 3 digit string (for unit and experiment)
+   - save locally under any name (recommendation: project name and date) 
+   - in database GUI, go to project tab and load; this will enter the project and save a version of the spreadshee on Z; note - if the project already exists, the old entries will be deleted to avoid conflicts
+
 ## Using the new spike sorting pipeline with data sorted using the old pipeline:
 
 The new spike sorting GUI can be used with data processed with the old spike sorting process by following these steps (all of these files can be found in util):
