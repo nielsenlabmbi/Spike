@@ -238,10 +238,17 @@ The new spike sorting GUI can be used with data processed with the old spike sor
 ## Dealing with blackrock files
 
 To sort files acquired with Blackrock, they need to be converted into files that follow the same format as the intan files; at that point, the same code as always can be applied. 
-1) convertBrIntan
+1) convertBrIntan (in util)
    - provide name of blackrock file
    - generates a fake header file, and an amplifier file
 *Output: filename_info.rhd, filename_amplifier.dat*
+
+2) Use standard spike sorting pipeline
+
+3) extractTrialsBR (in spkFuncitons)
+  - Extract events
+  - should address all of the issues with the digital pulses, and saves the trial events in the same way as for the intan data
+  *Output: filename_trialInfo.mat*
 
 
 

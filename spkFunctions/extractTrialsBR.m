@@ -35,7 +35,7 @@ trialInfo.triallist=getcondtrial(Analyzer);
 
 
 %load digital file and extract event onsets
-physname=fullfile(physpath,animal,['u' unit '_' exp],[animal '_u' unit '_' exp '.nev']);
+physname=fullfile(physpath,animal,[animal '_u' unit '_' exp],[animal '_u' unit '_' exp '.nev']);
 NEV = openNEV(physname);
 pulseTime = double(NEV.Data.SerialDigitalIO.TimeStamp);
 pulseVal=double(NEV.Data.SerialDigitalIO.UnparsedData);
