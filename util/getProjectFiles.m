@@ -45,6 +45,7 @@ projectOut.unitNr=data.unitNr(includeIdx);
 projectOut.experimentNr=data.experimentNr(includeIdx);
 projectOut.probeId=data.probeId(includeIdx);
 projectOut.datatype=data.datatype(includeIdx);
+projectOut.sortSuffix=data.sortSuffix(includeIdx);
 
 %add filenames for easier use
 projectOut.fileBase=strcat(projectOut.experimentId,'_u',projectOut.unitNr,...
