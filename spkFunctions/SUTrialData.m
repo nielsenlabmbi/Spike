@@ -14,8 +14,9 @@ function SUTrialData(physpath,animal,unit,exp,probeId,eventType,eId,baseTime,sti
 %baseTime: time before event to include (in s)
 %stimTime: time after event to include (in s)
 %copyToZ: copy file to Z
-%varargin: allows to add an addition to the file name (to distinguish
-%different versions)
+%varargin: allows addition of suffix to the spkSort file, as well as
+%          addition of suffix to the output file (do not have to be the same)
+%          indicate using 'spkSort' + suffix and 'out' + suffix
 %
 %output:
 %structure SU, one entry per cell
@@ -42,7 +43,10 @@ load([basename '_trialInfo.mat']);
 %load SU data
 sortName=[basename '_p' num2str(probeId) '_spkSort'];
 if ~isempty(varargin)
-    sortName=[sortName '_' varargin{1}];
+    idx=find(strcmp(varargin,'spkSort'));
+    if ~isempty(idx)
+        sortName=[sortName '_' varargin{idx+1}];
+    end
 end
 load(sortName);
 
@@ -130,15 +134,22 @@ SUinfo.sortname=spkSort.info.name;
 %save
 fname1=[basename '_p' num2str(probeId) '_SUTrial'];
 if ~isempty(varargin)
-    fname1=[fname1 '_' varargin{1}];    
+    idx=find(strcmp(varargin,'out'));
+    if ~isempty(idx)
+        fname1=[fname1 '_' varargin{idx+1}];
+    end
 end
+
 save(fname1,'SU','SUinfo');
 
 if copyToZ==1
     fname2=fullfile('Z:\EphysNew\processedSpikes',animal,[animal '_u' unit '_' exp],...
             [animal '_u' unit '_' exp '_p' num2str(probeId) '_SUTrial']);
     if ~isempty(varargin)
-        fname2=[fname2 '_' varargin{1}];
-    end
+        idx=find(strcmp(varargin,'out'));
+        if ~isempty(idx)
+            fname2=[fname2 '_' varargin{idx+1}];
+        end
+end
     save(fname2,'SU','SUinfo');
 end
