@@ -22,7 +22,7 @@ connSQL=database('ephysDatabase','','');
 if ~isempty(connSQL.Message)
     %needs password, most likely - assumption is this is stored as a secret
     %called 'dbPassword'
-    passw=getSecred('dbPassword');
+    passw=getSecret('dbPassword');
     connSQL=database('ephyseDatabase','nielsenlab',passw);
 
 end
