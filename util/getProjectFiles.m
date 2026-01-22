@@ -23,7 +23,7 @@ if ~isempty(connSQL.Message)
     %needs password, most likely - assumption is this is stored as a secret
     %called 'dbPassword'
     passw=getSecret('dbPassword');
-    connSQL=database('ephyseDatabase','nielsenlab',passw);
+    connSQL=database('ephysDatabase','nielsenlab',passw);
 
 end
 
