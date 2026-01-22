@@ -19,6 +19,14 @@ function projectOut=getProjectFiles(project,includeOnly,varargin)
 
 %open database
 connSQL=database('ephysDatabase','','');
+if ~isempty(connSQL.Message)
+    %needs password, most likely - assumption is this is stored as a secret
+    %called 'dbPassword'
+    passw=getSecred('dbPassword');
+    connSQL=database('ephyseDatabase','nielsenlab',passw);
+
+end
+
 
 %get data for project
 selquery=['SELECT * FROM tblproject WHERE projName="' project '"'];
