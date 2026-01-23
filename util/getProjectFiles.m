@@ -24,7 +24,6 @@ if ~isempty(connSQL.Message)
     %called 'dbPassword'
     passw=getSecret('dbPassword');
     connSQL=database('ephysDatabase','nielsenlab',passw);
-
 end
 
 

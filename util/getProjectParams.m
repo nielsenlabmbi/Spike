@@ -23,6 +23,12 @@ function pOut=getProjectParams(project,includeOnly,addAnalyzer,varargin)
 
 %open database
 connSQL=database('ephysDatabase','','');
+if ~isempty(connSQL.Message)
+    %needs password, most likely - assumption is this is stored as a secret
+    %called 'dbPassword'
+    passw=getSecret('dbPassword');
+    connSQL=database('ephysDatabase','nielsenlab',passw);
+end
 
 %get data for project
 selquery=['SELECT * FROM tblproject WHERE projName="' project '"'];
