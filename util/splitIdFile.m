@@ -1,4 +1,4 @@
-function splitIdFile(fileBase,animalId,unitId,expId)
+function splitIdFile(fileBase,animalId,unitId,expId,verbose)
 %split id files into separate setting files to be compatible with the
 %processing pipeline allowing multiple versions
 %we are ignoring all of the MU processing here as the id files often do not
@@ -6,6 +6,7 @@ function splitIdFile(fileBase,animalId,unitId,expId)
 %finally, no update of threshold file since that would just be name & date, 
 %but update of spkSort file to be able to read it with sortGui
 %check id file first to make sure information is actually correct
+%verbose: 0 supress output dialogs
 
 expname=[animalId '_u' unitId '_' expId];
 fname=fullfile(fileBase,animalId,expname,[expname '_id.mat']);
@@ -22,7 +23,7 @@ id.sampleFreq=idIn.id.sampleFreq;
 %move rest to old to keep record
 fnames=fieldnames(idIn.id);
 for i=1:length(fnames)
-    if ~any(strcmp(fnames{i},{'probes','isBR','exptId','sampleFreq'}))
+    if ~any(strcmp(fnames{i},{'probes','isBR','exptId','sampleFreq','old'}))
         id.old.(fnames{i})=idIn.id.(fnames{i});
     end
 end
@@ -103,50 +104,64 @@ end
 %% spkSort
 if isfield(idIn.id,'spikeSort')
     for i=1:length(idIn.id.spikeSort.date)
-        loadSort=0; %don't want to use return because the rest of the function should still execute
+        if ~isempty(idIn.id.spikeSort.date{i})
+            loadSort=0; %don't want to use return because the rest of the function should still execute
 
-        spkSortName=fullfile(fileBase,animalId,expname,[expname '_p' num2str(i) '_spkSort.mat']);
-        if isfile(spkSortName)
-            loadSort=1;
-        else
-            sel=questdlg('No spkSort file found. Pick one?','spkSort file',...
-                'Yes','Skip updating spkSort');
-            if strcmp(sel,'Yes')
-                [sortName,p] = uigetfile('*spkSort*.mat','Select sort file');
-                spkSortName=fullfile(p,sortName);
+            spkSortName=fullfile(fileBase,animalId,expname,[expname '_p' num2str(i) '_spkSort.mat']);
+            if isfile(spkSortName)
                 loadSort=1;
+            else
+                if verbose==1
+                    sel=questdlg('No spkSort file found. Pick one?','spkSort file',...
+                        'Yes','Skip updating spkSort');
+                    if strcmp(sel,'Yes')
+                        [sortName,p] = uigetfile('*spkSort*.mat','Select sort file');
+                        spkSortName=fullfile(p,sortName);
+                        loadSort=1;
+                    end
+                else
+                    disp(['Missing spkSort file: ' spkSortName]);
+                end
             end
-        end
 
-        if loadSort==1
-            load(spkSortName);
-            
-            %double check they actually match
-            updateSort=1;
-            if ~strcmpi(spkSort.info.name,idIn.id.spikeSort.name{i}) || ...
-                    datetime(spkSort.info.date)~=datetime(idIn.id.spikeSort.date{i})
-                sel=questdlg('Mismatch between spkSort and id file info (name or date). Proceed?','Mismatched info',...
-                    'Yes','No');
-                if strcmp(sel,'No')
+            if loadSort==1
+                load(spkSortName);
+
+                %double check they actually match
+                updateSort=1;
+                if ~strcmpi(spkSort.info.name,idIn.id.spikeSort.name{i}) || ...
+                        datetime(spkSort.info.date)~=datetime(idIn.id.spikeSort.date{i})
                     updateSort=0;
-                end
-            end
 
-            if updateSort==1
-                if ~isfield(spkSort.info,'percJobs')
-                    spkSort.info.percJobs=100;
+                    if verbose==1
+                        sel=questdlg('Mismatch between spkSort and id file info (name or date). Proceed?','Mismatched info',...
+                            'Yes','No');
+                        if strcmp(sel,'Yes')
+                            updateSort=1;
+                        end
+                    else
+                        disp(['Mismatch between spkSort and id file for: ' spkSortName])
+                    end
                 end
-                if ~isfield(spkSort.info,'jobsList')
-                    spkSort.info.jobsList=[spkSort.info.jobStart:spkSort.info.jobStop];
-                end
-                spkSort.info.jobEdges=idIn.id.extractSpikes.jobEdges{i};
-                spkSort.info.spikeFilesSuffix='';
-                spkSort.info.thresholdInfo.filename='threshold';
-                spkSort.info.thresholdInfo.date=idIn.id.threshold.name{i};
-                spkSort.info.thresholdInfo.name=idIn.id.threshold.date{i};
 
-                %save
-                save(spkSortName,'spkSort');
+                if updateSort==1
+                    if ~isfield(spkSort.info,'percJobs')
+                        spkSort.info.percJobs=100;
+                    end
+                    if ~isfield(spkSort.info,'jobsList')
+                        spkSort.info.jobsList=[spkSort.info.jobStart:spkSort.info.jobStop];
+                    end
+                    if ~isfield(spkSort.info,'jobEdges')
+                        spkSort.info.jobEdges=idIn.id.extractSpikes.jobEdges{i};
+                    end
+                    spkSort.info.spikeFilesSuffix='';
+                    spkSort.info.thresholdInfo.filename='threshold';
+                    spkSort.info.thresholdInfo.name=idIn.id.threshold.name{i};
+                    spkSort.info.thresholdInfo.date=idIn.id.threshold.date{i};
+
+                    %save
+                    save(spkSortName,'spkSort');
+                end
             end
 
         end
@@ -154,4 +169,8 @@ if isfield(idIn.id,'spikeSort')
 end
 
 %% done - warning dialog
-warndlg('Updated all settings files. Please make sure to check files to make sure information is correct!');
+if verbose==1
+    warndlg('Updated all settings files. Please make sure to check files to make sure information is correct!');
+else
+    disp(['Finished: ' fname])
+end

@@ -85,7 +85,7 @@ nChannels=sum([id.probes.nChannels]);
 filename=fullfile(expFolder,animalID,expname,[expname '_amplifier.dat']);
 fileinfo = dir(filename);
 samples = fileinfo.bytes/(2*nChannels); % Number of samples in amplifier data file
-samplesPerJob = ceil(samples/parts); % Number of samples to allocate to each of the 200 jobs
+samplesPerJob = ceil(samples/parts); % Number of samples to allocate to each of the jobs
 
 if legacyFlag==1
     %offset fixed at 2s previously
